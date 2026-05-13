@@ -1,0 +1,18 @@
+Backend:
+cd D:\Projects\Home\Home\backend
+npm run dev
+
+Web:
+cd D:\Projects\Home\Home\web
+npm run dev
+
+Mobile:
+cd D:\Projects\Home\Home\frontend
+npm start
+
+
+
+multi agles 
+играть с освежениями 
+ранглар комбинацияси 
+кайси ранглар комбинация ишлатилгани хакида малумот йигиш 

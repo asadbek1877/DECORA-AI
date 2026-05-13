@@ -1,0 +1,367 @@
+import React from "react";
+
+const BEFORE_IMG = "/mnt/data/ecc39d58-f5d0-4549-abd9-23356d90d29a.png";
+const AFTER_IMG = "/mnt/data/a6ae3788-3da7-49e2-81db-010e7be01be8.png";
+
+const ICONS = {
+  sparkles: "M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8L12 2Zm7 12l.9 2.6L22.5 18l-2.6.9L19 21.5l-.9-2.6-2.6-.9 2.6-.9L19 14ZM5 14l.9 2.6L8.5 18l-2.6.9L5 21.5l-.9-2.6-2.6-.9 2.6-.9L5 14Z",
+  arrow: "M13 5l7 7-7 7-1.4-1.4 4.6-4.6H4v-2h12.2l-4.6-4.6L13 5Z",
+  cloud: "M7.5 18C4.5 18 2 15.8 2 13c0-2.5 2-4.6 4.6-5A6.8 6.8 0 0 1 19.7 10 4 4 0 0 1 19 18H7.5Z",
+  desktop: "M3 4h18v12H3V4Zm2 2v8h14V6H5Zm4 13h6v2H9v-2Z",
+  image: "M4 5h16v14H4V5Zm2 2v8.5l3.5-3.5 3 3 2.5-2.5L18 15.5V7H6Zm3 3.2a1.7 1.7 0 1 0 0-3.4 1.7 1.7 0 0 0 0 3.4Z",
+  check: "M9.2 16.2 4.9 12l-1.4 1.4 5.7 5.7L21 7.3 19.6 6 9.2 16.2Z",
+  menu: "M4 7h16v2H4V7Zm0 4h16v2H4v-2Zm0 4h16v2H4v-2Z",
+  github: "M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.8c-2.8.6-3.4-1.2-3.4-1.2-.5-1.1-1.1-1.4-1.1-1.4-.9-.6.1-.6.1-.6 1 .1 1.6 1 1.6 1 .9 1.5 2.4 1.1 2.9.8.1-.6.3-1.1.6-1.3-2.2-.2-4.6-1.1-4.6-4.9 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.5 9.5 0 0 1 5 0c1.9-1.3 2.8-1 2.8-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.8-2.3 4.7-4.6 4.9.4.3.7.9.7 1.8V21c0 .3.2.6.7.5A10 10 0 0 0 12 2Z",
+};
+
+function Icon({ name, className = "w-6 h-6" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d={ICONS[name]} />
+    </svg>
+  );
+}
+
+const TESTS = [
+  ["before image exists", BEFORE_IMG.includes("ecc39d58")],
+  ["after image exists", AFTER_IMG.includes("a6ae3788")],
+  ["prices only in pricing data", true],
+  ["pricing has three plans", ["Free", "Pro", "Studio"].length === 3],
+];
+console.assert(TESTS.every(([, pass]) => pass), "Landing page self-tests failed");
+
+function Header() {
+  return (
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#070511]/75 backdrop-blur-2xl">
+      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8">
+        <a href="#top" className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/30">
+            <Icon name="sparkles" className="h-6 w-6 text-white" />
+          </div>
+          <span className="text-2xl font-black tracking-tight text-white">PixelLift</span>
+        </a>
+        <nav className="hidden items-center gap-7 text-sm font-bold text-white/60 md:flex">
+          <a className="hover:text-white" href="#cloud">Cloud</a>
+          <a className="hover:text-white" href="#desktop">Desktop</a>
+          <a className="hover:text-white" href="#reviews">Reviews</a>
+        </nav>
+        <a href="#desktop" className="hidden rounded-full border border-white/15 px-5 py-3 text-sm font-black text-white/80 hover:bg-white/10 sm:block">Explore</a>
+        <button className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white md:hidden">
+          <Icon name="menu" />
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function Glow() {
+  return (
+    <>
+      <div className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-violet-600/30 blur-[130px]" />
+      <div className="pointer-events-none absolute right-0 top-52 h-[420px] w-[420px] rounded-full bg-fuchsia-500/20 blur-[120px]" />
+      <div className="pointer-events-none absolute left-0 top-[620px] h-[360px] w-[360px] rounded-full bg-cyan-400/10 blur-[110px]" />
+    </>
+  );
+}
+
+function BeforeAfterImage({ src, alt, blur = false }) {
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={`h-full w-full object-cover ${blur ? "scale-110 blur-[8px] brightness-75" : ""}`}
+    />
+  );
+}
+
+function ImageCompare() {
+  return (
+    <div className="relative mx-auto mt-14 max-w-5xl overflow-hidden rounded-[2.5rem] border border-white/15 bg-white/5 p-3 shadow-2xl shadow-violet-950/50">
+      <div className="group relative h-[420px] cursor-ew-resize overflow-hidden rounded-[2rem] bg-black md:h-[560px]">
+        <div className="absolute inset-0">
+          <BeforeAfterImage src={BEFORE_IMG} alt="Before empty room" blur />
+          <div className="absolute inset-0 bg-black/25" />
+          <div className="absolute left-8 top-8 rounded-full bg-black/60 px-5 py-3 text-xs font-black uppercase tracking-[.25em] text-white">Before</div>
+          <div className="absolute bottom-8 left-8 max-w-xs rounded-3xl bg-black/40 p-5 text-left backdrop-blur-xl">
+            <p className="text-lg font-black text-white">Original room</p>
+            <p className="mt-2 text-sm font-medium text-white/65">Пустая комната до обработки.</p>
+          </div>
+        </div>
+
+        <div className="absolute inset-y-0 right-0 w-1/2 overflow-hidden border-l-4 border-white transition-all duration-500 ease-out group-hover:w-[78%]">
+          <div className="absolute inset-y-0 right-0 w-[min(80rem,100vw)]">
+            <BeforeAfterImage src={AFTER_IMG} alt="After luxury bedroom" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+            <div className="absolute right-8 top-8 rounded-full bg-white/20 px-5 py-3 text-xs font-black uppercase tracking-[.25em] text-white shadow-lg backdrop-blur-xl">After</div>
+            <div className="absolute bottom-8 right-8 max-w-xs rounded-3xl bg-white/15 p-5 text-left shadow-xl backdrop-blur-xl">
+              <p className="text-lg font-black text-white">Luxury redesign</p>
+              <p className="mt-2 text-sm font-medium text-white/80">Красивая версия после AI обработки.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/50 bg-white/20 text-white shadow-2xl backdrop-blur-xl transition-all duration-500 group-hover:left-[78%]">
+          <Icon name="arrow" className="h-7 w-7" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Hero() {
+  return (
+    <section id="top" className="relative overflow-hidden px-5 pb-24 pt-16 sm:px-8 sm:pt-24">
+      <Glow />
+      <div className="relative z-10 mx-auto max-w-7xl text-center">
+        <a href="#cloud" className="inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm font-black text-white/80 shadow-xl backdrop-blur-xl hover:bg-white/15">
+          <span className="rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-400 px-3 py-1 text-xs text-white">NEW</span>
+          AI redesign engine is ready
+        </a>
+        <h1 className="mx-auto mt-9 max-w-5xl text-6xl font-black leading-[0.9] tracking-tight text-white sm:text-8xl lg:text-9xl">
+          From Empty Room to Dream Space
+        </h1>
+        <p className="mx-auto mt-7 max-w-2xl text-xl font-medium leading-relaxed text-white/60 sm:text-2xl">
+          Upload a room photo, choose a style, and generate a beautiful interior design preview with AI.
+        </p>
+        <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <a href="#cloud" className="inline-flex items-center gap-3 rounded-full bg-white px-8 py-5 text-lg font-black text-slate-950 shadow-2xl shadow-white/10 transition hover:scale-[1.03]">
+            Explore Cloud <Icon name="arrow" />
+          </a>
+          <a href="#desktop" className="inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/10 px-8 py-5 text-lg font-black text-white backdrop-blur-xl transition hover:scale-[1.03]">
+            Explore Desktop
+          </a>
+        </div>
+        <ImageCompare />
+      </div>
+    </section>
+  );
+}
+
+function SeenOn() {
+  const logos = ["Digital Trends", "Make Use Of", "How-To Geek", "Y Combinator", "Beebom", "Medium", "Reddit", "Linux News"];
+  return (
+    <section className="mx-auto max-w-7xl px-5 py-10 sm:px-8">
+      <p className="text-center text-xs font-black uppercase tracking-[.35em] text-white/35">As seen on</p>
+      <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-8">
+        {logos.map((logo) => (
+          <div key={logo} className="rounded-2xl border border-white/10 bg-white/[.04] px-4 py-5 text-center text-sm font-black text-white/45">{logo}</div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Story() {
+  const cards = [
+    ["Empty room is hard to imagine", "A plain room can look boring before you see its real design potential."],
+    ["AI shows the final look", "Instead of guessing, generate a ready visual idea for the room in seconds."],
+    ["Design becomes easier", "Compare before and after, choose the best concept and plan your renovation."],
+  ];
+  return (
+    <section className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
+      <div className="max-w-3xl">
+        <h2 className="text-5xl font-black tracking-tight text-white sm:text-7xl">Redesign your room before spending money.</h2>
+        <p className="mt-6 text-xl font-medium text-white/55">A complete landing page inspired by AI product sites, rebuilt for interior design and room transformation.</p>
+      </div>
+      <div className="mt-12 grid gap-6 md:grid-cols-3">
+        {cards.map(([title, text], i) => (
+          <div key={title} className="rounded-[2rem] border border-white/10 bg-white/[.04] p-8 shadow-xl">
+            <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-violet-500/60 to-fuchsia-500/60 text-3xl font-black text-white">{i + 1}</div>
+            <h3 className="text-2xl font-black text-white">{title}</h3>
+            <p className="mt-4 text-lg leading-relaxed text-white/55">{text}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Audience() {
+  const items = ["Homeowners", "Designers", "Architects", "Studios", "Renovators", "You"];
+  return (
+    <section className="overflow-hidden py-16">
+      <p className="text-center text-sm font-black uppercase tracking-[.35em] text-white/35">PixelLift is made for</p>
+      <div className="mt-8 flex flex-wrap justify-center gap-4 px-5">
+        {items.map((item) => (
+          <span key={item} className="rounded-full border border-white/10 bg-white/[.04] px-8 py-5 text-3xl font-black text-white sm:text-5xl">{item}</span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MiniBeforeAfter() {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <div className="relative h-72 overflow-hidden rounded-3xl bg-black">
+        <BeforeAfterImage src={BEFORE_IMG} alt="Before" blur />
+        <span className="absolute left-4 top-4 rounded-full bg-black/55 px-4 py-2 text-xs font-black text-white">BEFORE</span>
+      </div>
+      <div className="relative h-72 overflow-hidden rounded-3xl bg-black">
+        <BeforeAfterImage src={AFTER_IMG} alt="After" />
+        <span className="absolute right-4 top-4 rounded-full bg-white/20 px-4 py-2 text-xs font-black text-white backdrop-blur-xl">AFTER</span>
+      </div>
+    </div>
+  );
+}
+
+function CloudSection() {
+  const features = [
+    ["Unmatched speed", "Generate interior ideas faster with cloud processing."],
+    ["Style accuracy", "Keep a consistent visual direction for each room."],
+    ["Multiple concepts", "Try modern, luxury, minimal and other design styles."],
+    ["Cloud storage", "Keep generated room concepts in one place."],
+    ["Batch generation", "Create several design options for one room."],
+    ["High quality preview", "Show the final room idea clearly before renovation."],
+    ["Universal compatibility", "Use it on desktop, tablet and mobile."],
+  ];
+  return (
+    <section id="cloud" className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
+      <div className="grid gap-10 lg:grid-cols-[.85fr_1.15fr] lg:items-center">
+        <div>
+          <p className="text-sm font-black uppercase tracking-[.35em] text-violet-300">Meet</p>
+          <h2 className="mt-4 text-6xl font-black tracking-tight text-white sm:text-8xl">PixelLift Cloud.</h2>
+          <p className="mt-6 text-xl font-medium leading-relaxed text-white/55">A cloud workspace for fast room redesign, before-after previews and interior style experiments.</p>
+        </div>
+        <div className="rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-white/10 to-white/[.03] p-4 shadow-2xl">
+          <div className="rounded-[2rem] bg-[#11101b] p-5">
+            <div className="mb-4 flex gap-2">
+              <span className="h-3 w-3 rounded-full bg-red-400" />
+              <span className="h-3 w-3 rounded-full bg-yellow-400" />
+              <span className="h-3 w-3 rounded-full bg-green-400" />
+            </div>
+            <MiniBeforeAfter />
+          </div>
+        </div>
+      </div>
+      <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+        {features.map(([title, text]) => (
+          <div key={title} className="group rounded-[1.7rem] border border-white/10 bg-white/[.04] p-6 transition hover:-translate-y-1 hover:bg-white/[.07]">
+            <Icon name="cloud" className="h-8 w-8 text-violet-300" />
+            <h3 className="mt-5 text-xl font-black text-white">{title}</h3>
+            <p className="mt-3 text-sm font-medium leading-relaxed text-white/50">{text}</p>
+            <span className="mt-5 inline-flex items-center gap-2 text-sm font-black text-violet-300">Learn more <Icon name="arrow" className="h-4 w-4" /></span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DesktopSection() {
+  const features = ["Local workspace", "Save in high quality", "Models for every style", "Easy customization", "Batch previews", "Before-after compare"];
+  return (
+    <section id="desktop" className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
+      <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+        <div className="order-2 rounded-[2.5rem] border border-white/10 bg-white/[.04] p-4 shadow-2xl lg:order-1">
+          <div className="rounded-[2rem] bg-gradient-to-br from-slate-900 to-violet-950 p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-3 text-white"><Icon name="desktop" /> Desktop App</div>
+              <div className="rounded-full bg-white/10 px-4 py-2 text-xs font-black text-white/60">Local</div>
+            </div>
+            <MiniBeforeAfter />
+          </div>
+        </div>
+        <div className="order-1 lg:order-2">
+          <h2 className="text-5xl font-black tracking-tight text-white sm:text-7xl">The app you know and love</h2>
+          <p className="mt-6 text-xl font-medium leading-relaxed text-white/55">A desktop experience for creating room redesign previews with flexible settings and clear before-after comparison.</p>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            {features.map((f) => (
+              <div key={f} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[.04] p-4 text-white/75">
+                <Icon name="check" className="h-5 w-5 text-violet-300" />
+                <span className="font-black">{f}</span>
+              </div>
+            ))}
+          </div>
+          <a href="#reviews" className="mt-9 inline-flex items-center gap-3 rounded-full bg-white px-8 py-5 text-lg font-black text-slate-950">See reviews <Icon name="arrow" /></a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Reviews() {
+  const reviews = [
+    ["Mira Studio", "This tool makes it easy to show a client how an empty room can look after redesign."],
+    ["J. Laren", "The before-after preview is clear, modern and very useful for renovation planning."],
+    ["Anirudh T.", "A great landing page style for interior AI products and design apps."],
+    ["Pixel Lab", "The visual comparison section is the strongest part of the page."],
+  ];
+  return (
+    <section id="reviews" className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
+      <h2 className="text-center text-5xl font-black tracking-tight text-white sm:text-7xl">People love the magic</h2>
+      <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {reviews.map(([name, text]) => (
+          <div key={name} className="rounded-[2rem] border border-white/10 bg-white/[.04] p-7">
+            <div className="mb-5 h-14 w-14 rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-400" />
+            <p className="text-lg font-medium leading-relaxed text-white/70">“{text}”</p>
+            <p className="mt-6 font-black text-white">{name}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Pricing() {
+  const plans = [
+    ["Free", "$0", ["3 room previews", "Basic styles", "Standard quality"]],
+    ["Pro", "$9", ["100 room previews", "HD output", "All interior styles", "Cloud history"]],
+    ["Studio", "$29", ["500 room previews", "Priority speed", "Team workflow", "Commercial use"]],
+  ];
+  return (
+    <section id="pricing" className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
+      <div className="text-center">
+        <h2 className="text-5xl font-black tracking-tight text-white sm:text-7xl">Choose your plan</h2>
+        <p className="mx-auto mt-5 max-w-2xl text-xl font-medium text-white/55">Pricing is shown only in this section.</p>
+      </div>
+      <div className="mt-12 grid gap-6 md:grid-cols-3">
+        {plans.map(([name, price, features], i) => (
+          <div key={name} className={`relative rounded-[2rem] border p-8 ${i === 1 ? "border-violet-400 bg-white/[.09] shadow-2xl shadow-violet-500/20" : "border-white/10 bg-white/[.04]"}`}>
+            {i === 1 && <span className="absolute -top-4 right-8 rounded-full bg-violet-500 px-5 py-2 text-sm font-black text-white">Popular</span>}
+            <h3 className="text-3xl font-black text-white">{name}</h3>
+            <div className="mt-5 text-6xl font-black text-white">{price}</div>
+            <a href="#top" className={`mt-8 flex justify-center rounded-full px-6 py-4 font-black ${i === 1 ? "bg-white text-slate-950" : "bg-white/10 text-white"}`}>Start now</a>
+            <div className="mt-8 space-y-4">
+              {features.map((f) => (
+                <div key={f} className="flex items-center gap-3 text-white/70"><Icon name="check" className="h-5 w-5 text-violet-300" /><span className="font-bold">{f}</span></div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="border-t border-white/10 px-5 py-12 sm:px-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3 text-white">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500"><Icon name="sparkles" /></div>
+          <span className="text-2xl font-black">PixelLift</span>
+        </div>
+        <p className="text-sm font-medium text-white/40">Interior AI landing page with real before-after images. Replace branding and text with your own.</p>
+        <a className="inline-flex items-center gap-2 text-white/60 hover:text-white" href="#top"><Icon name="github" /> GitHub</a>
+      </div>
+    </footer>
+  );
+}
+
+export default function App() {
+  return (
+    <main className="min-h-screen bg-[#070511] text-white">
+      <Header />
+      <Hero />
+      <SeenOn />
+      <Story />
+      <Audience />
+      <CloudSection />
+      <DesktopSection />
+      <Reviews />
+      <Pricing />
+      <Footer />
+    </main>
+  );
+}

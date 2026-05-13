@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "AI Interior Designer",
+    "slug": "ai-interior-designer",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "aiinterior",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F5F5F7"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aiinterior.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs camera access to photograph rooms for AI redesign.",
+        "NSPhotoLibraryUsageDescription": "This app needs photo library access to select room photos."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F5F5F7"
+      },
+      "package": "com.aiinterior.app",
+      "minSdkVersion": 21,
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow AI Interior Designer to access your camera to photograph rooms."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow AI Interior Designer to access your photos to select room images.",
+          "savePhotosPermission": "Allow AI Interior Designer to save redesigned images.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
