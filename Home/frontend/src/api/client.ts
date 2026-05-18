@@ -87,6 +87,18 @@ class ApiClient {
     return headers;
   }
 
+  private normalizeError(error: unknown, fallbackMessage: string): Error {
+    if (error instanceof Error) {
+      return error;
+    }
+
+    const message = typeof error === 'string' && error.trim()
+      ? error
+      : fallbackMessage;
+
+    return new Error(message);
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
@@ -140,10 +152,12 @@ class ApiClient {
       try {
         data = await response.json();
       } catch (parseErr: any) {
-        console.error('[ApiClient] JSON parse error:', parseErr.message);
         console.log('[ApiClient] Response status:', response.status);
         console.log('[ApiClient] Response headers:', response.headers);
-        throw new Error(`Invalid server response (${response.status}): Could not parse JSON`);
+        throw this.normalizeError(
+          parseErr,
+          `Invalid server response (${response.status}): Could not parse JSON`
+        );
       }
 
       if (!response.ok) {
@@ -155,7 +169,7 @@ class ApiClient {
           err.statusCode = 401;
           throw err;
         }
-        const errMsg = data.error || `Request failed with status ${response.status}`;
+        const errMsg = data.error || data.message || `Request failed with status ${response.status}`;
         const err = new Error(errMsg) as any;
         err.code = data.code || null;
         err.statusCode = response.status;
@@ -164,18 +178,14 @@ class ApiClient {
 
       return data;
     } catch (error: any) {
-      console.error('[ApiClient] Request error:', {
-        endpoint,
-        message: error.message,
-        name: error.name,
-      });
-      if (error.name === 'AbortError') {
+      const normalizedError = this.normalizeError(error, 'Request failed');
+      if (normalizedError.name === 'AbortError') {
         throw new Error('Request timeout after 2 minutes. AI server is overloaded or your connection is slow. Please try again in a moment.');
       }
-      if (error.message === 'Network request failed') {
+      if (normalizedError.message === 'Network request failed') {
         throw new Error('Unable to connect to server. Please check your connection.');
       }
-      throw error;
+      throw normalizedError;
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);

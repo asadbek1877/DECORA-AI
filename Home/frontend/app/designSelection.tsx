@@ -84,7 +84,7 @@ export default function DesignSelectionScreen() {
         params: { style: selectedStyle },
       });
     } catch (error) {
-      console.error('[DesignSelection] Error generating design:', error);
+      console.log('[DesignSelection] Error generating design:', error);
       
       // Determine error message based on error type
       let userTitle = 'Xatolik';

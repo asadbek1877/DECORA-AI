@@ -356,12 +356,26 @@ export const generatePreviewImages = async (req: AuthRequest, res: Response, nex
       if (!isGuest && projectId) {
         await prisma.project.update({ where: { id: projectId }, data: { status: 'FAILED' } }).catch(() => { });
       }
-      const statusCode = genError.statusCode || 500;
-      const errorCode = statusCode === 503 ? 'AI_BILLING' : 'AI_FAILED';
+      const errorMessage = genError?.message || 'AI server is currently busy or generating took too long. Please try again.';
+      const isTimeoutOrUnavailable =
+        genError?.statusCode === 503 ||
+        genError?.status === 503 ||
+        /timeout|timed out|503|busy|overloaded/i.test(errorMessage);
+
+      const statusCode = isTimeoutOrUnavailable ? 503 : (genError.statusCode || 500);
+      const responseMessage = isTimeoutOrUnavailable
+        ? 'AI server is currently busy or generating took too long. Please try again.'
+        : errorMessage;
+      const errorCode = statusCode === 503 ? 'AI_UNAVAILABLE' : 'AI_FAILED';
       if (statusCode === 503) {
-        logger.warn(`[ADMIN_ALERT] AI billing/API key issue on preview for user ${req.userId || 'guest'}`);
+        logger.warn(`[ADMIN_ALERT] AI provider unavailable on preview for user ${req.userId || 'guest'}`);
       }
-      res.status(statusCode).json({ success: false, error: genError.message, code: errorCode });
+      res.status(statusCode).json({
+        success: false,
+        message: responseMessage,
+        error: responseMessage,
+        code: errorCode,
+      });
       return;
     }
 

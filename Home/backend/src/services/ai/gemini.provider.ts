@@ -33,8 +33,8 @@ const GEMINI_MODEL = 'gemini-3.1-flash-image-preview';
 
 // ─── Timeout for Gemini API call ──────────────────────────────────────────────
 // The @google/genai SDK silently retries 503s with exponential backoff.
-// This cap kills that at 45 seconds and returns a fast, user-friendly error.
-const GEMINI_TIMEOUT_MS = 45_000;
+// This cap kills that before the SDK can hang indefinitely and returns a fast, user-friendly error.
+const GEMINI_TIMEOUT_MS = 90_000;
 
 // ─── Timeout wrapper ──────────────────────────────────────────────────────────
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
