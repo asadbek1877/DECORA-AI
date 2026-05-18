@@ -28,6 +28,7 @@ import { useUI } from '../src/components/new-ui/designSystem';
 import { useLanguageStore } from '../src/store/languageStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDesignStore } from '../src/store/designStore';
+import { safeRouterBack } from '../src/utils/navigation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -150,15 +151,7 @@ export default function CameraScreen() {
   };
 
   const goBack = () => {
-    try {
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.replace('/(tabs)/' as any);
-      }
-    } catch {
-      router.replace('/(tabs)/' as any);
-    }
+    safeRouterBack(router as any, '/');
   };
 
   return (

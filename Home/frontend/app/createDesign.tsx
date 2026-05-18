@@ -25,6 +25,7 @@ import { ScreenWrapper } from '../src/components/new-ui/ScreenWrapper';
 import { AppHeader } from '../src/components/new-ui/AppHeader';
 import { BottomNav } from '../src/components/new-ui/BottomNav';
 import { useDesignStore } from '../src/store/designStore';
+import { safeRouterBack } from '../src/utils/navigation';
 
 const SCREEN_WIDTH = require('react-native').Dimensions.get('window').width;
 
@@ -129,11 +130,7 @@ export default function CreateDesignScreen() {
 
   const handleBackPress = () => {
     console.log('[CreateDesign] Back button pressed');
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.push('/' as any);
-    }
+    safeRouterBack(router as any, '/');
   };
 
   return (

@@ -22,6 +22,7 @@ import { useUI } from '../src/components/new-ui/designSystem';
 import { useLanguageStore } from '../src/store/languageStore';
 import { useAuthStore } from '../src/store/authStore';
 import { AnimatedPressable, AnimatedCard } from '../src/components/new-ui/AnimatedPressable';
+import { safeRouterBack } from '../src/utils/navigation';
 import { api } from '../src/api/client';
 
 interface GalleryImage {
@@ -69,7 +70,7 @@ export default function AdminGalleryScreen() {
   useEffect(() => {
     if (user?.role !== 'ADMIN') {
       Alert.alert('Access Denied', 'Only admins can manage the gallery.', [
-        { text: 'OK', onPress: () => router.back() },
+        { text: 'OK', onPress: () => safeRouterBack(router as any, '/') },
       ]);
     } else {
       fetchGalleryItems();

@@ -19,6 +19,7 @@ import { colors } from '../../src/theme/colors';
 import { Header } from '../../src/components/Header';
 import { GoldButton } from '../../src/components/GoldButton';
 import { CustomCard } from '../../src/components/CustomCard';
+import { safeRouterBack } from '../../src/utils/navigation';
 
 const { width } = Dimensions.get('window');
 
@@ -63,7 +64,7 @@ export default function CreateDesignScreenProduction() {
         {
           text: "Ha, o'chirish",
           onPress: () => {
-            router.back();
+            safeRouterBack(router as any, '/');
           },
           style: 'destructive',
         },

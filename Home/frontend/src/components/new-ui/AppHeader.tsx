@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useUI } from './designSystem';
 import { useAuthStore } from '../../store/authStore';
 import { useLanguageStore, LANGUAGE_FLAGS, LANGUAGE_NAMES } from '../../store/languageStore';
+import { safeRouterBack } from '../../utils/navigation';
 
 type AppHeaderProps = {
   title?: string;
@@ -42,15 +43,7 @@ export function AppHeader({ title, showSearch = false, showBack = false, onBack 
       onBack();
       return;
     }
-    try {
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.replace('/(tabs)/' as any);
-      }
-    } catch {
-      router.replace('/(tabs)/' as any);
-    }
+    safeRouterBack(router as any, '/');
   };
 
   const openCamera = async () => {

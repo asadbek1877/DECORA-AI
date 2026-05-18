@@ -16,6 +16,7 @@ import { useUI } from '../src/components/new-ui/designSystem';
 import { useLanguageStore } from '../src/store/languageStore';
 import { useDesignStore } from '../src/store/designStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { safeRouterBack } from '../src/utils/navigation';
 
 const DESIGN_STYLES = [
   { id: 'Modern', name: 'Modern', icon: 'cube-outline', color: '#3B82F6' },
@@ -125,13 +126,10 @@ export default function DesignSelectionScreen() {
   const goBack = () => {
     console.log('[DesignSelection] Going back');
     try {
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.push('/createDesign' as any);
-      }
+      safeRouterBack(router as any, '/');
     } catch (error) {
-      console.error('[DesignSelection] Back navigation error:', error);
+      console.log('[DesignSelection] Back navigation error:', error);
+      router.replace('/');
     }
   };
 

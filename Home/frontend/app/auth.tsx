@@ -16,6 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../src/store/authStore';
+import { safeRouterBack } from '../src/utils/navigation';
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -88,15 +89,7 @@ export default function AuthScreen() {
               <Pressable 
                 style={styles.backButton} 
                 onPress={() => {
-                  try {
-                    if (router.canGoBack?.()) {
-                      router.back();
-                    } else {
-                      router.replace('/index' as any);
-                    }
-                  } catch {
-                    router.replace('/index' as any);
-                  }
+                  safeRouterBack(router as any, '/');
                 }}
               >
                 <Ionicons name="arrow-back" size={20} color="#1a1c1d" />

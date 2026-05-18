@@ -17,6 +17,7 @@ import { useScrollStore } from '../src/store/scrollStore';
 import { useDesignStore } from '../src/store/designStore';
 import { useAuthStore } from '../src/store/authStore';
 import { api } from '../src/api/client';
+import { safeRouterBack } from '../src/utils/navigation';
 
 export default function ResultScreen() {
   const router = useRouter();
@@ -276,7 +277,7 @@ export default function ResultScreen() {
 
   return (
     <View style={[styles.safe, { backgroundColor: colors.bg }]}>
-      <AppHeader showBack onBack={() => router.replace('/(tabs)/' as any)} />
+      <AppHeader showBack onBack={() => safeRouterBack(router as any, '/')} />
 
       <ScreenWrapper>
         {isLoadingProject ? (
