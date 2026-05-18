@@ -30,7 +30,7 @@ export default function DesignSelectionScreen() {
   const router = useRouter();
   const { colors, isDark } = useUI();
   const { t } = useLanguageStore();
-  const { selectStyle, generatePreviews, originalImageUri } = useDesignStore();
+  const { selectStyle, generatePreviews, originalImageUri, currentProjectId } = useDesignStore();
   const [selectedStyle, setSelectedStyle] = useState<string>('Modern');
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -75,7 +75,7 @@ export default function DesignSelectionScreen() {
       
       // Generate previews with base64 image data
       console.log('[DesignSelection] Calling generatePreviews with base64 image');
-      await generatePreviews(undefined, [selectedStyle], undefined, compressedImage.base64);
+      await generatePreviews(currentProjectId || undefined, [selectedStyle], undefined, compressedImage.base64);
       
       console.log('[DesignSelection] Generation complete, navigating to result');
       // Navigate to result screen

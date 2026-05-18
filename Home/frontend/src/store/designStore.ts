@@ -227,8 +227,19 @@ export const useDesignStore = create<DesignState>((set, get) => {
             imageUrl: fullUrl(p.imageUrl) || p.imageUrl,
           })),
           isMock: !!(response.data as any).isMock,
-          status: 'idle',
         });
+
+        if (projectId) {
+          // Persist the generated design to history immediately after success.
+          try {
+            await get().saveGenerationToHistory(projectId);
+          } catch (saveError: any) {
+            console.warn('[DesignStore] Failed to save preview to history:', saveError.message);
+          }
+        }
+
+        set({ status: 'idle' });
+
         // Refresh credits after generating
         get().loadCredits();
       } else {
