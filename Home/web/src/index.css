@@ -8,7 +8,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 html {
-  scroll-behavior: smooth;
+  /* scroll-behavior: smooth removed — GPU-intensive on scroll events */
 }
 
 body {
@@ -36,13 +36,15 @@ body {
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
-/* ─── Animations ───────────────────────────────────────────── */
+/* ─── Animations (GPU-ACCELERATED ONLY) ───────────────────── */
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
 
-button, a { transition: all 0.2s ease; }
+/* Only animate transform and opacity (GPU-safe) */
+button { transition: color 0.2s ease, background-color 0.2s ease, transform 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
+a { transition: color 0.2s ease, opacity 0.2s ease; }
 img { -webkit-user-drag: none; user-select: none; }
 
 .app-shell {

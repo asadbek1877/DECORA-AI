@@ -140,14 +140,13 @@ export default function HeroSlider() {
         onPointerLeave={handlePointerUp}
         style={{ touchAction: 'none' }}
       >
-        {/* Before image (full, z-1) */}
+        {/* Before image (full) */}
         <AnimatePresence mode="wait">
           <motion.img
             key={`before-${pair.id}`}
             src={pair.before}
             alt="Before"
             className="absolute inset-0 w-full h-full object-cover"
-            style={{ zIndex: 1 }}
             initial={{ opacity: isFading ? 0 : 1 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -156,25 +155,29 @@ export default function HeroSlider() {
           />
         </AnimatePresence>
 
-        {/* After image (clipped, z-2) */}
+        {/* After image with GPU-accelerated transform instead of clipPath */}
         <AnimatePresence mode="wait">
           <motion.div
             key={`after-${pair.id}`}
-            className="absolute inset-0"
-            style={{
-              zIndex: 2,
-              clipPath: `inset(0 ${100 - sliderPos}% 0 0)`,
-            }}
+            className="absolute inset-0 overflow-hidden"
             initial={{ opacity: isFading ? 0 : 1 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.6 }}
+            style={{ width: '100%', height: '100%' }}
           >
-            <img
+            <motion.img
               src={pair.after}
               alt="After"
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 h-full object-cover"
               draggable={false}
+              style={{
+                width: '100%',
+                // GPU-accelerated scaleX + translateX instead of clipPath
+                // This keeps the image full-width but uses transform to reveal/hide
+                transformOrigin: 'left center',
+                scaleX: sliderPos / 100,
+              }}
             />
           </motion.div>
         </AnimatePresence>

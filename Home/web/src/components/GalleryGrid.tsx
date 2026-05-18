@@ -1,13 +1,64 @@
-import { useState } from 'react';
+import { useState, memo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useDesignStore } from '../store/designStore';
 
 const FILTERS = ['All', 'Modern', 'Luxury', 'Minimal', 'Japanese', 'Industrial'];
 
+// ─── MEMOIZED GRID ITEM (prevents re-renders on parent state change) ───
+interface GridItemProps {
+  img: any;
+  index: number;
+  onClick: (url: string) => void;
+}
+
+const GalleryGridItem = memo(function GalleryGridItem({ img, index, onClick }: GridItemProps) {
+  return (
+    <motion.div
+      className="relative group rounded-2xl overflow-hidden cursor-pointer bg-bg-card border border-border"
+      onClick={() => onClick(img.url)}
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-100px' }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+    >
+      <img
+        src={img.url}
+        alt={`${img.style} design`}
+        className="w-full aspect-[4/5] object-cover will-change-transform group-hover:scale-105"
+        style={{
+          transitionProperty: 'transform',
+          transitionDuration: '500ms',
+          transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+        loading="lazy"
+      />
+
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="absolute bottom-3 left-3">
+          <span
+            className="px-3 py-1 rounded-full text-xs font-bold text-white uppercase tracking-wide"
+            style={{
+              background: 'rgba(139, 92, 246, 0.6)',
+              backdropFilter: 'blur(4px)',
+            }}
+          >
+            {img.parentStyle}
+          </span>
+        </div>
+      </div>
+    </motion.div>
+  );
+});
+
 export default function GalleryGrid() {
   const { gallery } = useDesignStore();
   const [activeFilter, setActiveFilter] = useState('All');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  
+  const handleImageClick = useCallback((url: string) => {
+    setSelectedImage(url);
+  }, []);
 
   const filteredGallery = activeFilter === 'All'
     ? gallery
@@ -92,46 +143,16 @@ export default function GalleryGrid() {
           </p>
         </motion.div>
       ) : (
-        <motion.div
-          className="grid grid-cols-2 sm:grid-cols-3 gap-4"
-          initial="hidden"
-          animate="show"
-          variants={{ show: { transition: { staggerChildren: 0.07 } } }}
-        >
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {allImages.map((img, i) => (
-            <motion.div
+            <GalleryGridItem
               key={`${img.id}-${i}`}
-              variants={{
-                hidden: { opacity: 0, y: 20 },
-                show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
-              }}
-              className="relative group rounded-2xl overflow-hidden cursor-pointer bg-bg-card border border-border"
-              onClick={() => setSelectedImage(img.url)}
-            >
-              <img
-                src={img.url}
-                alt={`${img.style} design`}
-                className="w-full aspect-[4/5] object-cover transition-transform duration-500 group-hover:scale-105"
-                loading="lazy"
-              />
-
-              {/* Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300">
-                <div className="absolute bottom-3 left-3">
-                  <span
-                    className="px-3 py-1 rounded-full text-xs font-bold text-white uppercase tracking-wide"
-                    style={{
-                      background: 'rgba(139, 92, 246, 0.6)',
-                      backdropFilter: 'blur(4px)',
-                    }}
-                  >
-                    {img.parentStyle}
-                  </span>
-                </div>
-              </div>
-            </motion.div>
+              img={img}
+              index={i}
+              onClick={handleImageClick}
+            />
           ))}
-        </motion.div>
+        </div>
       )}
 
       {/* Lightbox */}

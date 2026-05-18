@@ -1,13 +1,13 @@
 Backend:
-cd D:\Projects\Home\Home\backend
+cd "d:\Decora AI\Home\backend"
 npm run dev
 
 Web:
-cd D:\Projects\Home\Home\web
+cd "d:\Decora AI\Home\web"
 npm run dev
 
 Mobile:
-cd D:\Projects\Home\Home\frontend
+cd "d:\Decora AI\Home\frontend"
 npm start
 
 

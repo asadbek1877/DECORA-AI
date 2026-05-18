@@ -4,13 +4,72 @@ import { useLanguage } from '../i18n/useLanguage';
 import { LanguageSelector } from './LanguageSelector';
 import { ThemeToggle } from './ThemeToggle';
 import { Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, memo, useCallback, useMemo } from 'react';
 
-export default function Navbar() {
+// ─── MEMOIZED NAV ITEM ───
+const NavItem = memo(function NavItem({ 
+  to, 
+  children, 
+  isActive 
+}: { 
+  to: string; 
+  children: string; 
+  isActive: boolean;
+}) {
+  return (
+    <NavLink
+      to={to}
+      className={`transition-all duration-300 pb-1 ${
+        isActive
+          ? 'text-primary border-b-2 border-primary'
+          : 'text-on-surface-variant dark:text-gray-400 hover:text-on-surface dark:hover:text-white'
+      }`}
+    >
+      {children}
+    </NavLink>
+  );
+});
+
+// ─── MEMOIZED MOBILE MENU ───
+const MobileMenu = memo(function MobileMenu({ 
+  isOpen, 
+  isActive,
+  onClose
+}: { 
+  isOpen: boolean; 
+  isActive: (path: string) => boolean;
+  onClose: () => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.2 }}
+      className="absolute top-full left-0 right-0 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 md:hidden"
+    >
+      <div className="flex flex-col gap-4 p-4">
+        <NavItem to="/" isActive={isActive('/')} children="Home" />
+        <NavItem to="/gallery" isActive={isActive('/gallery')} children="Gallery" />
+        <NavItem to="/features" isActive={isActive('/features')} children="Features" />
+        <NavItem to="/admin" isActive={isActive('/admin')} children="Admin" />
+        <NavItem to="/history" isActive={isActive('/history')} children="History" />
+        <NavItem to="/settings" isActive={isActive('/settings')} children="Settings" />
+      </div>
+    </motion.div>
+  );
+});
+
+function Navbar() {
   const location = useLocation();
   const { t } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const isActive = (path: string) => location.pathname === path;
+  
+  const isActive = useCallback((path: string) => location.pathname === path, [location.pathname]);
+  const toggleMobileMenu = useCallback(() => setMobileMenuOpen(prev => !prev), []);
+  const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
 
   return (
     <motion.nav
@@ -26,54 +85,12 @@ export default function Navbar() {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-8 font-headline font-bold tracking-tight">
-          <NavLink
-            to="/"
-            className={`transition-all duration-300 pb-1 ${
-              isActive('/') ? 'text-primary border-b-2 border-primary' : 'text-on-surface-variant dark:text-gray-400 hover:text-on-surface dark:hover:text-white'
-            }`}
-          >
-            Home
-          </NavLink>
-          <NavLink
-            to="/gallery"
-            className={`transition-all duration-300 pb-1 ${
-              isActive('/gallery') ? 'text-primary border-b-2 border-primary' : 'text-on-surface-variant dark:text-gray-400 hover:text-on-surface dark:hover:text-white'
-            }`}
-          >
-            {t('nav.gallery')}
-          </NavLink>
-          <NavLink
-            to="/features"
-            className={`transition-all duration-300 pb-1 ${
-              isActive('/features') ? 'text-primary border-b-2 border-primary' : 'text-on-surface-variant dark:text-gray-400 hover:text-on-surface dark:hover:text-white'
-            }`}
-          >
-            Features
-          </NavLink>
-          <NavLink
-            to="/admin"
-            className={`transition-all duration-300 pb-1 ${
-              isActive('/admin') ? 'text-primary border-b-2 border-primary' : 'text-on-surface-variant dark:text-gray-400 hover:text-on-surface dark:hover:text-white'
-            }`}
-          >
-            {t('nav.admin')}
-          </NavLink>
-          <NavLink
-            to="/history"
-            className={`transition-all duration-300 pb-1 ${
-              isActive('/history') ? 'text-primary border-b-2 border-primary' : 'text-on-surface-variant dark:text-gray-400 hover:text-on-surface dark:hover:text-white'
-            }`}
-          >
-            History
-          </NavLink>
-          <NavLink
-            to="/settings"
-            className={`transition-all duration-300 pb-1 ${
-              isActive('/settings') ? 'text-primary border-b-2 border-primary' : 'text-on-surface-variant dark:text-gray-400 hover:text-on-surface dark:hover:text-white'
-            }`}
-          >
-            Settings
-          </NavLink>
+          <NavItem to="/" isActive={isActive('/')} children="Home" />
+          <NavItem to="/gallery" isActive={isActive('/gallery')} children={t('nav.gallery')} />
+          <NavItem to="/features" isActive={isActive('/features')} children="Features" />
+          <NavItem to="/admin" isActive={isActive('/admin')} children={t('nav.admin')} />
+          <NavItem to="/history" isActive={isActive('/history')} children="History" />
+          <NavItem to="/settings" isActive={isActive('/settings')} children="Settings" />
         </div>
 
         {/* Right Controls */}
@@ -93,8 +110,9 @@ export default function Navbar() {
 
           {/* Mobile Menu Toggle */}
           <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            onClick={toggleMobileMenu}
             className="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+            aria-label="Toggle navigation menu"
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -150,3 +168,5 @@ export default function Navbar() {
     </motion.nav>
   );
 }
+
+export default memo(Navbar);
