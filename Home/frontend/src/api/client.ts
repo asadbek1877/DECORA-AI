@@ -147,13 +147,16 @@ class ApiClient {
         throw fetchError || new Error('Network request failed after retries');
       }
 
+      const rawText = await response.text();
+
       // Safely parse response as JSON
       let data: any;
       try {
-        data = await response.json();
+        data = rawText ? JSON.parse(rawText) : {};
       } catch (parseErr: any) {
         console.log('[ApiClient] Response status:', response.status);
         console.log('[ApiClient] Response headers:', response.headers);
+        console.log('[ApiClient] Raw response body:', rawText);
         throw this.normalizeError(
           parseErr,
           `Invalid server response (${response.status}): Could not parse JSON`
@@ -161,6 +164,7 @@ class ApiClient {
       }
 
       if (!response.ok) {
+        console.log('[ApiClient] Non-OK response body:', rawText);
         // ── Auto-clear broken/expired token on 401 ────────────────────────────
         if (response.status === 401) {
           // Log out user and show error

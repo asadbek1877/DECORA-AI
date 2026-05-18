@@ -8,10 +8,12 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  ImageBackground,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { compressImageToBase64 } from '../src/utils/imageCompression';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useUI } from '../src/components/new-ui/designSystem';
 import { useLanguageStore } from '../src/store/languageStore';
 import { useDesignStore } from '../src/store/designStore';
@@ -19,12 +21,42 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { safeRouterBack } from '../src/utils/navigation';
 
 const DESIGN_STYLES = [
-  { id: 'Modern', name: 'Modern', icon: 'cube-outline', color: '#3B82F6' },
-  { id: 'Luxury', name: 'Luxury', icon: 'crown', color: '#D4AF37' },
-  { id: 'Japanese', name: 'Japanese', icon: 'lotus', color: '#E74C3C' },
-  { id: 'Industrial', name: 'Industrial', icon: 'nuts', color: '#7F8C8D' },
-  { id: 'Minimalist', name: 'Minimalist', icon: 'square', color: '#95A5A6' },
-  { id: 'Bohemian', name: 'Bohemian', icon: 'leaf', color: '#F39C12' },
+  {
+    id: 'Modern',
+    name: 'Modern',
+    color: '#3B82F6',
+    imageSource: require('../assets/images/styles/modern.jpg'),
+  },
+  {
+    id: 'Luxury',
+    name: 'Luxury',
+    color: '#D4AF37',
+    imageSource: require('../assets/images/styles/luxury.jpg'),
+  },
+  {
+    id: 'Japanese',
+    name: 'Japanese',
+    color: '#E74C3C',
+    imageSource: require('../assets/images/styles/japanese.jpg'),
+  },
+  {
+    id: 'Industrial',
+    name: 'Industrial',
+    color: '#7F8C8D',
+    imageSource: require('../assets/images/styles/industrial.jpg'),
+  },
+  {
+    id: 'Minimalist',
+    name: 'Minimalist',
+    color: '#95A5A6',
+    imageSource: require('../assets/images/styles/minimalist.jpg'),
+  },
+  {
+    id: 'Bohemian',
+    name: 'Bohemian',
+    color: '#F39C12',
+    imageSource: require('../assets/images/styles/bohemian.jpg'),
+  },
 ];
 
 export default function DesignSelectionScreen() {
@@ -175,41 +207,41 @@ export default function DesignSelectionScreen() {
                     styles.styleCard,
                     {
                       borderColor: isSelected ? style.color : colors.border,
-                      borderWidth: isSelected ? 3 : 2,
-                      backgroundColor: isSelected
-                        ? colors.surfaceLight
-                        : colors.surface,
-                      opacity: pressed ? 0.7 : 1,
+                      borderWidth: isSelected ? 3 : 1,
+                      shadowColor: isSelected ? style.color : '#000',
+                      transform: [{ scale: pressed ? 0.985 : 1 }],
                     },
                   ]}
                   hitSlop={8}
                 >
-                  <View 
-                    style={[
-                      styles.iconContainer,
-                      { 
-                        backgroundColor: `${style.color}30`,
-                        borderColor: style.color,
-                      }
-                    ]}
+                  <ImageBackground
+                    source={style.imageSource}
+                    style={styles.imageFill}
+                    imageStyle={styles.imageRound}
+                    resizeMode="cover"
                   >
-                    <MaterialCommunityIcons
-                      name={style.icon as any}
-                      size={32}
-                      color={style.color}
-                    />
-                  </View>
-                  
-                  <Text style={[styles.styleName, { color: colors.text }]}>
-                    {style.name}
-                  </Text>
-                  
+                    <View style={styles.imageOverlay} />
+
+                    <LinearGradient
+                      colors={['transparent', 'rgba(2, 6, 23, 0.22)', 'rgba(2, 6, 23, 0.92)']}
+                      locations={[0, 0.48, 1]}
+                      style={styles.footerGradient}
+                    >
+                      <Text style={styles.styleName} numberOfLines={1}>
+                        {style.name}
+                      </Text>
+                      <Text style={styles.styleHint} numberOfLines={1}>
+                        Designer inspiration
+                      </Text>
+                    </LinearGradient>
+                  </ImageBackground>
+
                   {isSelected && (
-                    <View style={styles.checkmark}>
+                    <View style={[styles.checkmark, { backgroundColor: style.color }]}>
                       <MaterialCommunityIcons
-                        name="check-circle"
-                        size={20}
-                        color={style.color}
+                        name="check"
+                        size={16}
+                        color="#fff"
                       />
                     </View>
                   )}
@@ -314,42 +346,80 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 12,
+    alignItems: 'flex-start',
+    gap: 14,
   },
   
   styleCardWrapper: {
-    width: '48%',
+    flexBasis: '48%',
+    maxWidth: '48%',
+    marginBottom: 2,
   },
   
   styleCard: {
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    minHeight: 160,
+    borderRadius: 26,
+    overflow: 'hidden',
+    aspectRatio: 0.86,
     position: 'relative',
+    backgroundColor: '#E5E7EB',
+    shadowOpacity: 0.14,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
   },
-  
-  iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
+
+  imageFill: {
+    flex: 1,
+    justifyContent: 'space-between',
   },
-  
+
+  imageRound: {
+    borderRadius: 26,
+  },
+
+  imageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+  },
+
+  footerGradient: {
+    marginTop: 'auto',
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    paddingTop: 30,
+  },
+
   styleName: {
-    fontSize: 14,
-    fontWeight: '700',
-    textAlign: 'center',
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.2,
+  },
+
+  styleHint: {
+    marginTop: 2,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.82)',
   },
   
   checkmark: {
     position: 'absolute',
-    top: 8,
-    right: 8,
+    top: 10,
+    right: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.45)',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
 
   // Info Box
