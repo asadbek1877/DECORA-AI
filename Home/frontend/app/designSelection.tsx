@@ -9,6 +9,7 @@ import {
   Alert,
   Pressable,
   ImageBackground,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { compressImageToBase64 } from '../src/utils/imageCompression';
@@ -59,13 +60,54 @@ const DESIGN_STYLES = [
   },
 ];
 
+type PromptLanguage = 'en' | 'ru' | 'uz';
+
+const STYLE_PROMPTS: Record<string, Record<PromptLanguage, string>> = {
+  Modern: {
+    en: 'Transform this room into a sleek, modern interior. STRICTLY PRESERVE the original room layout, architectural geometry, windows, and doors. Update the furniture to feature clean lines, apply a neutral color palette, and add modern lighting fixtures. Keep the exact spatial proportions of the uploaded image.',
+    ru: 'Превратите эту комнату в элегантный современный интерьер. СТРОГО СОХРАНЯЙТЕ исходную планировку комнаты, архитектурную геометрию, окна и двери. Обновите мебель, добавив четкие линии, используйте нейтральную цветовую палитру и добавьте современные осветительные приборы. Сохраните точные пространственные пропорции.',
+    uz: "Ushbu xonani zamonaviy interyerga aylantiring. Xonaning asl joylashuvini, arxitektura geometriyasini, deraza va eshiklarni QAT'IY SAQLAB QOLING. Mebellarni toza chiziqlar bilan yangilang, neytral ranglar palitrasini qo'llang va zamonaviy yoritish moslamalarini qo'shing. Xonaning o'lchamlarini aniq saqlang.",
+  },
+  Luxury: {
+    en: 'Redesign this room with an opulent, luxury aesthetic. DO NOT alter the original room structure, walls, or window placements. Introduce premium textures, marble accents, rich fabrics, sophisticated lighting, and gold/brass details while maintaining the current spatial dimensions.',
+    ru: 'Измените дизайн этой комнаты в роскошном стиле. НЕ ИЗМЕНЯЙТЕ исходную структуру комнаты, стены или расположение окон. Добавьте премиальные текстуры, мраморные акценты, дорогие ткани, изысканное освещение и золотые детали, сохраняя текущие пространственные размеры.',
+    uz: "Ushbu xonani hashamatli dizayn bilan qayta bezating. Xonaning asl tuzilishini, devorlarni yoki deraza joylashuvini O'ZGARTIRMANG. Xonaning o'lchamlarini saqlagan holda, yuqori sifatli teksturalar, marmar elementlar, boy matolar, murakkab yoritish va tilla detallarni qo'shing.",
+  },
+  Japanese: {
+    en: 'Apply a calming Japanese Zen/Japandi style to this room. MAINTAIN the exact original architectural layout and structure. Incorporate natural light wood textures, low-profile minimalist furniture, Shoji-inspired elements, and soft diffused lighting, keeping the original room proportions intact.',
+    ru: 'Примените к этой комнате успокаивающий японский стиль Zen/Japandi. СОХРАНИТЕ точную исходную архитектурную планировку и структуру. Используйте текстуры светлого натурального дерева, низкую минималистичную мебель, элементы в стиле сёдзи и мягкое рассеянное освещение.',
+    uz: "Ushbu xonaga tinchlantiruvchi Yapon Zen/Japandi uslubini qo'llang. Asl arxitektura tuzilishi va tartibini SAQLAB QOLING. Tabiiy ochiq rangli yog'och teksturalari, past minimalist mebellar, Shoji uslubidagi elementlar va yumshoq tarqaluvchi yorug'likdan foydalaning.",
+  },
+  Industrial: {
+    en: 'Convert this space into a raw, industrial loft style. PRESERVE the existing room geometry, doors, and windows entirely. Add exposed brick textures, raw concrete elements, visible metal accents, rustic leather furniture, and factory-style lighting.',
+    ru: 'Превратите это пространство в стиль индустриального лофта. ПОЛНОСТЬЮ СОХРАНИТЕ существующую геометрию комнаты, двери и окна. Добавьте текстуры открытой кирпичной кладки, элементы из необработанного бетона, видимые металлические акценты, мебель из грубой кожи и освещение в фабричном стиле.',
+    uz: "Bu joyni xom, industrial loft uslubiga aylantiring. Xonaning mavjud geometriyasini, eshik va derazalarini TO'LIQ SAQLANG. Ochiq g'isht teksturalari, xom beton elementlar, ko'rinib turadigan metall detallar, charm mebellar va fabrika uslubidagi chiroqlarni qo'shing.",
+  },
+  Minimalist: {
+    en: 'Restyle this room into an ultra-minimalist space. KEEP the original architecture and spatial layout exactly as they are. Remove visual clutter, apply a monochromatic light palette, use monolithic and highly functional furniture, and maximize the feeling of open space.',
+    ru: 'Переделайте эту комнату в ультраминималистичное пространство. СОХРАНИТЕ оригинальную архитектуру и пространственную планировку. Уберите визуальный шум, примените монохромную светлую палитру, используйте функциональную мебель и максимально увеличьте ощущение открытого пространства.',
+    uz: "Xonani ultra-minimalist uslubda qayta jihozlang. Asl arxitektura va fazoviy joylashuvni qanday bo'lsa, xuddi shunday SAQLANG. Vizual chalg'ituvchi narsalarni olib tashlang, monoxrom och rangli palitradan foydalaning va ochiq joy hissini maksimal darajaga yetkazing.",
+  },
+  Bohemian: {
+    en: 'Transform the interior into a cozy, Bohemian (Boho-chic) style. STRICTLY RETAIN the original room boundaries, windows, and structural layout. Layer the space with eclectic textiles, rattan furniture, warm earthy tones, macrame accents, and abundant indoor plants.',
+    ru: 'Превратите интерьер в уютный богемный стиль (Boho-chic). СТРОГО СОХРАНЯЙТЕ исходные границы комнаты, окна и структурную планировку. Наполните пространство эклектичным текстилем, мебелью из ротанга, теплыми землистыми тонами и обилием комнатных растений.',
+    uz: "Interyerni shinam Bohemiya (Boho-chic) uslubiga aylantiring. Xonaning asl chegaralarini, derazalarini va strukturaviy joylashuvini QAT'IY SAQLANG. Joyni turli xil tekstil materiallari, rattan mebellar, issiq tabiiy ranglar va ko'plab xona o'simliklari bilan boyiting.",
+  },
+};
+
+function getStylePrompt(styleId: string, lang: string): string {
+  const language = lang === 'ru' || lang === 'uz' ? lang : 'en';
+  return STYLE_PROMPTS[styleId]?.[language] || STYLE_PROMPTS[styleId]?.en || '';
+}
+
 export default function DesignSelectionScreen() {
   const router = useRouter();
   const { colors, isDark } = useUI();
-  const { t } = useLanguageStore();
+  const { t, lang } = useLanguageStore();
   const { selectStyle, generatePreviews, originalImageUri, currentProjectId } = useDesignStore();
   const [selectedStyle, setSelectedStyle] = useState<string>('Modern');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
   // Debug log on mount
   React.useEffect(() => {
@@ -77,6 +119,9 @@ export default function DesignSelectionScreen() {
     console.log('[DesignSelection] Selected style:', styleId);
     setSelectedStyle(styleId);
   };
+
+  const displayedPrompt = getStylePrompt(selectedStyle, lang);
+  const englishPrompt = getStylePrompt(selectedStyle, 'en');
 
   const handleGenerate = async () => {
     console.log('[DesignSelection] Generate pressed. Image URI:', originalImageUri);
@@ -108,7 +153,13 @@ export default function DesignSelectionScreen() {
       
       // Generate previews with base64 image data
       console.log('[DesignSelection] Calling generatePreviews with base64 image');
-      await generatePreviews(currentProjectId || undefined, [selectedStyle], undefined, compressedImage.base64);
+      await generatePreviews(
+        currentProjectId || undefined,
+        [selectedStyle],
+        undefined,
+        compressedImage.base64,
+        englishPrompt,
+      );
       
       console.log('[DesignSelection] Generation complete, navigating to result');
       // Navigate to result screen
@@ -233,6 +284,24 @@ export default function DesignSelectionScreen() {
                       <Text style={styles.styleHint} numberOfLines={1}>
                         Designer inspiration
                       </Text>
+
+                      {isSelected && (
+                        <Pressable
+                          onPress={() => setModalVisible(true)}
+                          style={({ pressed }) => [
+                            styles.promptChip,
+                            { opacity: pressed ? 0.82 : 1 },
+                          ]}
+                          hitSlop={6}
+                        >
+                          <MaterialCommunityIcons
+                            name="cog-outline"
+                            size={12}
+                            color="#fff"
+                          />
+                          <Text style={styles.promptChipText}>Prompt</Text>
+                        </Pressable>
+                      )}
                     </LinearGradient>
                   </ImageBackground>
 
@@ -266,6 +335,57 @@ export default function DesignSelectionScreen() {
           </Text>
         </Animated.View>
       </ScrollView>
+
+      <Modal
+        visible={modalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <Pressable
+            style={styles.modalBackdropPressable}
+            onPress={() => setModalVisible(false)}
+          />
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalTitleWrap}>
+                <Text style={styles.modalTitle}>AI Prompt</Text>
+                <Text style={styles.modalSubtitle}>
+                  {selectedStyle} · {lang.toUpperCase()}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setModalVisible(false)}
+                style={({ pressed }) => [
+                  styles.modalCloseButton,
+                  { opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <MaterialCommunityIcons name="close" size={20} color="#0F172A" />
+              </Pressable>
+            </View>
+
+            <ScrollView
+              style={styles.modalScroll}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.modalScrollContent}
+            >
+              <Text style={styles.modalPromptText}>{displayedPrompt}</Text>
+            </ScrollView>
+
+            <Pressable
+              onPress={() => setModalVisible(false)}
+              style={({ pressed }) => [
+                styles.modalDoneButton,
+                { opacity: pressed ? 0.82 : 1 },
+              ]}
+            >
+              <Text style={styles.modalDoneButtonText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       {/* Fixed Bottom Action */}
       <View style={[styles.bottomContainer, { borderTopColor: colors.border }]}>
@@ -437,6 +557,110 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     lineHeight: 16,
+  },
+
+  promptChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+    marginTop: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+
+  promptChipText: {
+    color: '#fff',
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+
+  modalBackdropPressable: {
+    ...StyleSheet.absoluteFillObject,
+  },
+
+  modalSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 22,
+  },
+
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+
+  modalTitleWrap: {
+    flex: 1,
+  },
+
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.2,
+  },
+
+  modalSubtitle: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+
+  modalCloseButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F1F5F9',
+  },
+
+  modalScroll: {
+    maxHeight: 320,
+    marginTop: 14,
+  },
+
+  modalScrollContent: {
+    paddingBottom: 4,
+  },
+
+  modalPromptText: {
+    fontSize: 14,
+    lineHeight: 22,
+    fontWeight: '500',
+    color: '#111827',
+  },
+
+  modalDoneButton: {
+    marginTop: 14,
+    minHeight: 46,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0F172A',
+  },
+
+  modalDoneButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
   },
 
   // Bottom Container

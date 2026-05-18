@@ -78,7 +78,7 @@ interface DesignState {
   // Actions
   setOriginalImage: (uri: string) => void;
   uploadImage: (imageUri: string) => Promise<{ projectId: string | null; success: boolean; isGuest: boolean; originalImageUrl: string | null } | null>;
-  generatePreviews: (projectId: string | undefined, styles?: string[], roomType?: string, guestImageUrl?: string) => Promise<void>;
+  generatePreviews: (projectId: string | undefined, styles?: string[], roomType?: string, guestImageUrl?: string, customPrompt?: string) => Promise<void>;
   generateFinal: (projectId: string, styleName: string, roomType?: string, guestImageUrl?: string, customPrompt?: string, aiProvider?: string) => Promise<void>;
   regenerateSinglePreview: (styleName: string, projectId?: string, guestImageUrl?: string) => Promise<void>;
   selectStyle: (styleName: string) => void;
@@ -209,7 +209,7 @@ export const useDesignStore = create<DesignState>((set, get) => {
     }
   },
 
-  generatePreviews: async (projectId: string | undefined, styles?: string[], roomType?: string, guestImageUrl?: string) => {
+  generatePreviews: async (projectId: string | undefined, styles?: string[], roomType?: string, guestImageUrl?: string, customPrompt?: string) => {
     set({ status: 'previewing', error: null, previews: [] });
     try {
       const response = await api.generatePreview(
@@ -219,6 +219,7 @@ export const useDesignStore = create<DesignState>((set, get) => {
         guestImageUrl,
         get().selectedModel || undefined,
         get().styleIntensity,
+        customPrompt,
       );
       if (response.success && response.data) {
         set({

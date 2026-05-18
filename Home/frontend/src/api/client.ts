@@ -364,6 +364,7 @@ class ApiClient {
     guestImageUrl?: string,
     modelId?: string,
     intensity?: number,
+    customPrompt?: string,
     signal?: AbortSignal,
   ): Promise<ApiResponse<PreviewResult>> {
     // Check if guestImageUrl is base64 data (contains no protocols like http/https/file)
@@ -376,6 +377,7 @@ class ApiClient {
       ...(modelId ? { modelId } : {}),
       ...(guestImageUrl ? (isBase64 ? { imageBase64: guestImageUrl } : { originalImageUrl: guestImageUrl }) : {}),
       ...(intensity !== undefined ? { intensity } : {}),
+      ...(customPrompt ? { customPrompt } : {}),
     };
 
     console.log('[ApiClient] generatePreview payload:', {
@@ -383,6 +385,7 @@ class ApiClient {
       styles: payload.styles,
       roomType: payload.roomType,
       modelId: payload.modelId,
+      customPrompt: payload.customPrompt ? `${payload.customPrompt.substring(0, 80)}...` : undefined,
       hasImageData: !!guestImageUrl,
       imageDataType: isBase64 ? 'base64' : 'url',
       imageDataPreview: guestImageUrl ? `${guestImageUrl.substring(0, 50)}...` : 'undefined',
