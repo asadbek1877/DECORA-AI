@@ -26,6 +26,7 @@ import { AppHeader } from '../src/components/new-ui/AppHeader';
 import { BottomNav } from '../src/components/new-ui/BottomNav';
 import { useDesignStore } from '../src/store/designStore';
 import { safeRouterBack } from '../src/utils/navigation';
+import { UploadSourceSheet } from '../src/components/new-ui/UploadSourceSheet';
 
 const SCREEN_WIDTH = require('react-native').Dimensions.get('window').width;
 
@@ -43,22 +44,15 @@ export default function CreateDesignScreen() {
   const [selectedMode, setSelectedMode] = useState<'design' | null>('design');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAiProvider, setSelectedAiProvider] = useState('gemini');
+  const [showUploadSheet, setShowUploadSheet] = useState(false);
 
   const handleProviderSelect = (providerId: string) => {
     setSelectedAiProvider(providerId);
-    triggerActionSheet(providerId);
+    setShowUploadSheet(true);
   };
 
-  const triggerActionSheet = (providerId: string) => {
-    Alert.alert(
-      '📸 Upload Image',
-      'Choose how you want to provide your room image:',
-      [
-        { text: '📷 Take Photo', onPress: () => takePhoto() },
-        { text: '📁 Gallery', onPress: () => pickFromLibrary() },
-        { text: 'Cancel', style: 'cancel' }
-      ]
-    );
+  const closeUploadSheet = () => {
+    setShowUploadSheet(false);
   };
 
   const takePhoto = async () => {
@@ -92,6 +86,7 @@ export default function CreateDesignScreen() {
       Alert.alert('Error', 'Failed to capture photo');
     } finally {
       setIsLoading(false);
+      closeUploadSheet();
     }
   };
 
@@ -125,6 +120,7 @@ export default function CreateDesignScreen() {
       Alert.alert('Error', 'Failed to pick image');
     } finally {
       setIsLoading(false);
+      closeUploadSheet();
     }
   };
 
@@ -184,6 +180,13 @@ export default function CreateDesignScreen() {
       </ScreenWrapper>
 
       <BottomNav active="design" />
+
+      <UploadSourceSheet
+        visible={showUploadSheet}
+        onClose={closeUploadSheet}
+        onCameraPress={takePhoto}
+        onGalleryPress={pickFromLibrary}
+      />
     </View>
   );
 }
