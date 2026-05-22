@@ -697,13 +697,39 @@ export const generateFinalImage = async (req: AuthRequest, res: Response, next: 
 
     // ─── Guest: return directly without DB ────────────────────────────────────
     if (isGuest) {
-      logger.info(`[Final] GUEST complete — result: ${result.imageUrl}`);
+      const guestProject = await prisma.project.create({
+        data: {
+          userId: null,
+          originalImageUrl,
+          originalPublicId: null,
+          style: styleName,
+          styleName: result.styleName || styleName,
+          prompt: result.prompt || customPrompt || null,
+          roomType,
+          status: 'COMPLETED',
+          isPublic: false,
+        },
+      });
+
+      const guestImage = await prisma.generatedImage.create({
+        data: {
+          projectId: guestProject.id,
+          styleName: result.styleName,
+          imageUrl: result.imageUrl,
+          publicId: result.publicId,
+          imageType: 'FINAL',
+          prompt: result.prompt,
+          modelUsed: selectedModel?.displayName || result.modelUsed || 'default',
+        },
+      });
+
+      logger.info(`[Final] GUEST complete — saved project ${guestProject.id}`);
       res.status(200).json({
         success: true,
         data: {
-          projectId: null,
-          styleName,
-          finalImageUrl: result.imageUrl,
+          projectId: guestProject.id,
+          styleName: guestProject.styleName || styleName,
+          finalImageUrl: guestImage.imageUrl,
           originalImageUrl,
           status: 'COMPLETED',
           creditsRemaining: 9999,

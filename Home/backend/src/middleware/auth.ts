@@ -4,9 +4,20 @@ import { config } from '../config';
 import { UnauthorizedError } from '../utils/errors';
 import prisma from '../lib/prisma';
 
+export type RequestUser = {
+  id: string;
+  role: string;
+};
+
 export interface AuthRequest extends Request {
   userId?: string;
+  user?: RequestUser;
 }
+
+const attachGuestUser = (req: AuthRequest): void => {
+  req.user = { id: 'guest', role: 'guest' };
+  delete req.userId;
+};
 
 export const authenticate = async (
   req: AuthRequest,
@@ -16,7 +27,9 @@ export const authenticate = async (
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
-      throw new UnauthorizedError('No token provided');
+      attachGuestUser(req);
+      next();
+      return;
     }
 
     const token = authHeader.split(' ')[1];
@@ -36,13 +49,11 @@ export const authenticate = async (
     }
 
     req.userId = decoded.userId;
+    req.user = { id: user.id, role: user.role };
     next();
   } catch (error) {
-    if (error instanceof UnauthorizedError) {
-      next(error);
-    } else {
-      next(new UnauthorizedError('Invalid token'));
-    }
+    attachGuestUser(req);
+    next();
   }
 };
 
@@ -57,9 +68,15 @@ export const optionalAuth = async (
       const token = authHeader.split(' ')[1];
       const decoded = jwt.verify(token, config.jwt.secret) as { userId: string };
       req.userId = decoded.userId;
+      const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+      if (user) {
+        req.user = { id: user.id, role: user.role };
+      }
+    } else {
+      attachGuestUser(req);
     }
   } catch {
-    // Ignore token errors for optional auth
+    attachGuestUser(req);
   }
   next();
 };
