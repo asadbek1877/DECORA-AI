@@ -212,6 +212,7 @@ export async function generateMultipleDesignPreviews(
     intensity?: number,
 ): Promise<GenerationResult[]> {
     const results: GenerationResult[] = [];
+    let lastError: AppError | null = null;
     
     // Build intensity-based instructions if provided
     let intensityInstructions = '';
@@ -231,9 +232,16 @@ export async function generateMultipleDesignPreviews(
         } catch (error: any) {
             // Re-throw billing errors immediately — no point retrying other styles
             if (error instanceof AIBillingError) throw error;
+            lastError = error instanceof AppError
+                ? error
+                : new AppError(error?.message || `Preview failed for style "${style.name}"`, error?.statusCode || error?.status || 500);
             logger.error(`[AIService] Preview failed for style "${style.name}": ${error.message}`);
             // Continue with remaining styles
         }
+    }
+
+    if (results.length === 0 && lastError) {
+        throw lastError;
     }
 
     return results;

@@ -1,11 +1,10 @@
 import { GoogleGenAI } from '@google/genai';
-import sharp from 'sharp';
 import * as fs from 'fs';
 import logger from '../../utils/logger';
 import { uploadUrlToCloudinary } from '../cloudinary.service';
 import { AppError } from '../../utils/errors';
-import { AIBillingError } from '../replicate.service';
 import { AIProvider, DesignMode, DesignStyleInput, GenerationResult } from './ai.provider.interface';
+import { GEMINI_TIMEOUT_MS, withGeminiRetries } from './gemini.resilience';
 
 /**
  * Get MIME type from file path extension
@@ -23,29 +22,34 @@ function getMimeType(filePath: string): string {
 }
 
 // ─── Model ────────────────────────────────────────────────────────────────────
-// gemini-3.1-flash-image-preview supports:
-//   • Image input  (original room photo as base64)
-//   • Text prompt  (style instruction)
-//   • Image output (edited version — same room, new style)
-// This is TRUE img2img: walls, floor, ceiling stay in place.
+// Gemini image models support inline image input via base64 `inlineData`.
+// This is true img2img: walls, floor, ceiling stay in place.
 // Docs: https://ai.google.dev/gemini-api/docs/image-generation
-const GEMINI_MODEL = 'gemini-3.1-flash-image-preview';
 
-// ─── Timeout for Gemini API call ──────────────────────────────────────────────
-// The @google/genai SDK silently retries 503s with exponential backoff.
-// This cap kills that before the SDK can hang indefinitely and returns a fast, user-friendly error.
-const GEMINI_TIMEOUT_MS = 90_000;
+const GEMINI_IMAGE_MODELS = [
+    'gemini-2.0-flash-preview-image-generation',
+    'gemini-2.5-flash-image',
+] as const;
 
-// ─── Timeout wrapper ──────────────────────────────────────────────────────────
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  let timer: ReturnType<typeof setTimeout>;
-  const timeout = new Promise<T>((_, reject) => {
-    timer = setTimeout(
-      () => reject(new AppError(`${label} timed out after ${ms / 1000}s. The AI server is under high demand — please try again in a moment.`, 503)),
-      ms,
-    );
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer!));
+type GeminiRequestConfig = {
+    httpOptions: {
+        timeout: number;
+    };
+    abortSignal: AbortSignal;
+};
+
+async function withGeminiRequestTimeout<T>(timeoutMs: number, operation: (config: GeminiRequestConfig) => Promise<T>): Promise<T> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        return await operation({
+            httpOptions: { timeout: timeoutMs },
+            abortSignal: controller.signal,
+        });
+    } finally {
+        clearTimeout(timeoutId);
+    }
 }
 
 // ─── Instruction Builder (FAST MODE - Minimal Processing) ────────────────────
@@ -71,6 +75,53 @@ function buildInstruction(
     ].join(' ');
 }
 
+function isHttpUrl(value: string): boolean {
+    return /^https?:\/\//i.test(value);
+}
+
+function isDataUri(value: string): boolean {
+    return /^data:/i.test(value);
+}
+
+async function readImageAsBase64(imagePath: string): Promise<{ mimeType: string; data: string }> {
+    if (isDataUri(imagePath)) {
+        const match = imagePath.match(/^data:(.+?);base64,(.+)$/i);
+        if (!match) {
+            throw new AppError('Invalid data URI image input.', 400);
+        }
+
+        return {
+            mimeType: match[1],
+            data: match[2],
+        };
+    }
+
+    if (/^https?:\/\//i.test(imagePath)) {
+        const response = await fetch(imagePath);
+        if (!response.ok) {
+            throw new AppError(`Could not download source image. HTTP ${response.status}`, 500);
+        }
+
+        return {
+            mimeType: (response.headers.get('content-type') || 'image/jpeg').split(';')[0],
+            data: Buffer.from(await response.arrayBuffer()).toString('base64'),
+        };
+    }
+
+    const mimeType = getMimeType(imagePath);
+    const data = await fs.promises.readFile(imagePath, { encoding: 'base64' });
+
+    return { mimeType, data };
+}
+
+async function cleanupFile(filePath: string): Promise<void> {
+    try {
+        await fs.promises.unlink(filePath);
+    } catch {
+        // Best-effort cleanup only.
+    }
+}
+
 // ─── Gemini Provider ──────────────────────────────────────────────────────────
 export class GeminiProvider implements AIProvider {
     private readonly ai: GoogleGenAI;
@@ -79,22 +130,15 @@ export class GeminiProvider implements AIProvider {
         if (!apiKey) {
             logger.warn('[GeminiProvider] GEMINI_API_KEY is not set — API calls will fail with 403.');
         }
-        this.ai = new GoogleGenAI({ apiKey });
+        this.ai = new GoogleGenAI({
+            apiKey,
+            httpOptions: {
+                timeout: GEMINI_TIMEOUT_MS,
+            },
+        });
     }
 
     async analyzeRoom(imageUrl: string): Promise<any> {
-        let imageBase64: string;
-        let imageMime: string;
-        try {
-            const imgResp = await fetch(imageUrl);
-            if (!imgResp.ok) throw new Error(`HTTP ${imgResp.status}`);
-            const buffer = Buffer.from(await imgResp.arrayBuffer());
-            imageMime = (imgResp.headers.get('content-type') || 'image/jpeg').split(';')[0];
-            imageBase64 = buffer.toString('base64');
-        } catch (err: any) {
-            throw new AppError('Could not download source image for analysis.', 500);
-        }
-
         const prompt = `Analyze this interior room image. Respond ONLY with a valid JSON object matching this schema:
 {
   "roomType": "string (e.g. living room, bedroom, kitchen)",
@@ -107,19 +151,24 @@ export class GeminiProvider implements AIProvider {
 Do not include any markdown formatting like \`\`\`json. Just output the raw JSON string.`;
 
         try {
-            // Using flash-8b for faster text/vision tasks if available, otherwise fallback to flash
-            const response = await this.ai.models.generateContent({
+            const image = await readImageAsBase64(imageUrl);
+
+            logger.info('[GeminiProvider] generateContent started');
+            const response = await withGeminiRetries('Gemini room analysis generateContent', async () => withGeminiRequestTimeout(GEMINI_TIMEOUT_MS, (requestConfig) => this.ai.models.generateContent({
                 model: 'gemini-2.0-flash',
                 contents: [
-                    { text: prompt },
+                    prompt,
                     {
                         inlineData: {
-                            mimeType: imageMime,
-                            data: imageBase64,
+                            mimeType: image.mimeType,
+                            data: image.data,
                         },
                     },
                 ],
-            });
+                config: requestConfig,
+            })));
+            logger.info('[GeminiProvider] generateContent completed');
+
             const text = response?.text || '';
             const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
             return JSON.parse(cleanedText);
@@ -182,10 +231,11 @@ The prompt should be written in English. Focus on lighting, materials, atmospher
 Return ONLY the prompt string, nothing else.`;
 
         try {
-            const response = await this.ai.models.generateContent({
+            const response = await withGeminiRequestTimeout(GEMINI_TIMEOUT_MS, (requestConfig) => this.ai.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: [{ text: prompt }],
-            });
+                config: requestConfig,
+            }));
             return response?.text?.trim() || '';
         } catch (err: any) {
             logger.warn(`[GeminiProvider] Prompt generation error: ${err.message}. Attempting Groq fallback...`);
@@ -241,148 +291,93 @@ Return ONLY the prompt string, nothing else.`;
         const totalLabel = `[Gemini] Total generateDesign (${mode}/${style.name})`;
         console.time(totalLabel);
 
-        // ── Step 1: Get image as base64 (optimize for each source type) ──────────
-        let imageBase64: string;
-        let imageMime: string;
-
-        console.time('[Gemini] Image preparation');
         try {
-            if (imagePath.startsWith('data:')) {
-                // ── FASTEST: Already base64 from local compression ───────────────────
-                // No download, no compression needed!
-                console.log('[Gemini] Using local base64 (pre-compressed, fastest!)');
-                const matches = imagePath.match(/^data:([^;]+);base64,(.+)$/);
-                if (!matches) throw new Error('Invalid data URI format');
-                imageMime = matches[1];
-                imageBase64 = matches[2];
-            } else if (imagePath.includes('cloudinary.com')) {
-                // ── FAST PATH: Cloudinary URL (already compressed by previous upload) ─
-                console.log('[Gemini] Downloading from Cloudinary (already 1024px)...');
-                const imgResp = await fetch(imagePath);
-                if (!imgResp.ok) throw new Error(`HTTP ${imgResp.status}`);
-                const buffer = Buffer.from(await imgResp.arrayBuffer());
-                imageMime = (
-                    imgResp.headers.get('content-type') || 'image/jpeg'
-                ).split(';')[0];
-                imageBase64 = buffer.toString('base64');
-            } else {
-                // ── FALLBACK: File system path ────────────────────────────────────────
-                console.log('[Gemini] Reading from file system...');
-                const buffer = fs.readFileSync(imagePath);
-                imageMime = getMimeType(imagePath);
-                imageBase64 = buffer.toString('base64');
-            }
-            console.timeEnd('[Gemini] Image preparation');
-        } catch (err: any) {
-            console.timeEnd('[Gemini] Image preparation');
-            console.timeEnd(totalLabel);
-            logger.error(`[GeminiProvider] Image prep failed: ${err.message}`);
-            throw new AppError('Could not prepare image for Gemini.', 500);
-        }
+            const image = await readImageAsBase64(imagePath);
 
-        logger.info(`[GeminiProvider] Source ready: ${(imageBase64.length / 1024 / 4).toFixed(0)} KB (${imageMime})`);
+            logger.info('[GeminiProvider] generateContent started');
+            const apiLabel = 'Gemini generateContent';
+            console.time(`[Gemini] ${apiLabel}`);
+            let lastError: unknown;
 
-        // ── Step 2: Call Gemini API with strict 40-second timeout ────────────────
-        // NO exponential backoff — fail fast!
-        let response: any;
-        console.time('[Gemini] API call');
-        try {
-            response = await withTimeout(
-                this.ai.models.generateContent({
-                    model: GEMINI_MODEL,
-                    contents: [
-                        { text: fullInstruction },
-                        {
-                            inlineData: {
-                                mimeType: imageMime,
-                                data: imageBase64,
+            for (const model of GEMINI_IMAGE_MODELS) {
+                try {
+                    logger.info(`[GeminiProvider] Trying Gemini image model: ${model}`);
+                    const response = await withGeminiRetries(`${apiLabel} (${model})`, async () => withGeminiRequestTimeout(GEMINI_TIMEOUT_MS, (requestConfig) => this.ai.models.generateContent({
+                        model,
+                        contents: [
+                            fullInstruction,
+                            {
+                                inlineData: {
+                                    mimeType: image.mimeType,
+                                    data: image.data,
+                                },
                             },
-                        },
-                    ],
-                }),
-                GEMINI_TIMEOUT_MS,
-                'Gemini API call',
-            );
+                        ],
+                        config: requestConfig,
+                    })));
+
+                    console.timeEnd(`[Gemini] ${apiLabel}`);
+                    logger.info('[GeminiProvider] generateContent completed');
+
+                    const parts = response?.candidates?.[0]?.content?.parts ?? [];
+                    let imageData: string | null = null;
+                    let imageMimeOut = 'image/png';
+
+                    for (const part of parts) {
+                        if (part?.inlineData?.mimeType?.startsWith('image/') && typeof part.inlineData.data === 'string') {
+                            imageData = part.inlineData.data;
+                            imageMimeOut = part.inlineData.mimeType;
+                            break;
+                        }
+                    }
+
+                    if (!imageData) {
+                        const textParts = parts
+                            .filter((p: any) => p?.text)
+                            .map((p: any) => p.text)
+                            .join(' ');
+                        logger.error(
+                            `[GeminiProvider] No image in response from ${model}. Text: ${textParts.substring(0, 200)}`
+                        );
+                        throw new AppError(
+                            'Gemini returned no image. Try different style or prompt.',
+                            500
+                        );
+                    }
+
+                    console.time('[Gemini] Cloudinary upload');
+                    const folder = mode === 'final' ? 'finals' : 'previews';
+                    const cloudResult = await uploadUrlToCloudinary(
+                        `data:${imageMimeOut};base64,${imageData}`,
+                        `ai-interior/${folder}/${style.name}`
+                    );
+                    console.timeEnd('[Gemini] Cloudinary upload');
+
+                    logger.info(`[GeminiProvider] ✓ Generated and uploaded to Cloudinary`);
+                    console.timeEnd(totalLabel);
+
+                    return {
+                        imageUrl: cloudResult.url,
+                        publicId: cloudResult.publicId,
+                        styleName: style.name,
+                        prompt: fullInstruction,
+                        modelUsed: `gemini/${model}`,
+                    };
+                } catch (error: any) {
+                    lastError = error;
+                    logger.warn(`[GeminiProvider] Model ${model} failed: ${error.message}`);
+                }
+            }
+
+            throw lastError instanceof AppError
+                ? lastError
+                : new AppError(`Gemini error: ${(lastError as any)?.message || 'Unknown error'}`, (lastError as any)?.statusCode || (lastError as any)?.status || 500);
         } catch (err: any) {
-            console.timeEnd('[Gemini] API call');
             console.timeEnd(totalLabel);
             logger.error(`[GeminiProvider] API error: ${err.message}`);
-
-            // Handle errors with strict, no-retry approach
-            if (
-                err.message?.includes('API_KEY') ||
-                err.status === 401 ||
-                err.status === 403
-            ) {
-                throw new AppError('Invalid GEMINI_API_KEY. Check .env', 500);
-            }
-            if (err.status === 429) {
-                throw new AIBillingError('Gemini quota exceeded (429). Wait and retry.');
-            }
-            if (err.status === 503 || err.statusCode === 503) {
-                throw new AppError(
-                    'Gemini servers overloaded (503). Please retry in 30 seconds.',
-                    503
-                );
-            }
-            if (err.message?.includes('timeout')) {
-                throw new AppError(
-                    'Generation timeout after 40 seconds. Servers too slow.',
-                    503
-                );
-            }
-            throw new AppError(`Gemini error: ${err.message}`, err.statusCode || 500);
+            throw err instanceof AppError
+                ? err
+                : new AppError(`Gemini error: ${err.message}`, err.statusCode || err.status || 500);
         }
-        console.timeEnd('[Gemini] API call');
-
-        // ── Step 3: Extract image from response ─────────────────────────────────
-        const parts = response?.candidates?.[0]?.content?.parts ?? [];
-        let imageData: string | null = null;
-        let imageMimeOut = 'image/png';
-
-        for (const part of parts) {
-            if (part?.inlineData?.mimeType?.startsWith('image/')) {
-                imageData = part.inlineData.data;
-                imageMimeOut = part.inlineData.mimeType;
-                break;
-            }
-        }
-
-        if (!imageData) {
-            console.timeEnd(totalLabel);
-            const textParts = parts
-                .filter((p: any) => p?.text)
-                .map((p: any) => p.text)
-                .join(' ');
-            logger.error(
-                `[GeminiProvider] No image in response. Text: ${textParts.substring(0, 200)}`
-            );
-            throw new AppError(
-                'Gemini returned no image. Try different style or prompt.',
-                500
-            );
-        }
-
-        // ── Step 4: Upload ONLY the generated image to Cloudinary ────────────────
-        // This is the ONLY Cloudinary upload now!
-        console.time('[Gemini] Cloudinary upload');
-        const dataUri = `data:${imageMimeOut};base64,${imageData}`;
-        const folder = mode === 'final' ? 'finals' : 'previews';
-        const cloudResult = await uploadUrlToCloudinary(
-            dataUri,
-            `ai-interior/${folder}/${style.name}`
-        );
-        console.timeEnd('[Gemini] Cloudinary upload');
-
-        logger.info(`[GeminiProvider] ✓ Generated and uploaded to Cloudinary`);
-        console.timeEnd(totalLabel);
-
-        return {
-            imageUrl: cloudResult.url,
-            publicId: cloudResult.publicId,
-            styleName: style.name,
-            prompt: fullInstruction,
-            modelUsed: `gemini/${GEMINI_MODEL}`,
-        };
     }
 }

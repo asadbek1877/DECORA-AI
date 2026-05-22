@@ -1,4 +1,7 @@
 import { Response, NextFunction } from 'express';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { AuthRequest } from '../middleware/auth';
@@ -280,6 +283,7 @@ export const uploadImageBase64 = async (
 
 // ─── Generate Previews ────────────────────
 export const generatePreviewImages = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  let tempFilePath: string | undefined;
   try {
     const parsed = previewSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -310,14 +314,21 @@ export const generatePreviewImages = async (req: AuthRequest, res: Response, nex
     // ── Resolve source image URL ──────────────────────────────────────────────
     // Guests pass EITHER originalImageUrl OR imageBase64 (no DB project)
     let originalImageUrl: string;
+
     if (isGuest) {
       // For guests: accept either Cloudinary URL or base64 image data
       const { originalImageUrl: urlFromBody, imageBase64, mimeType } = req.body;
       
       if (imageBase64) {
-        // Convert base64 to data URI for AI providers
-        originalImageUrl = base64ToDataUri(imageBase64, mimeType);
-        logger.info(`[Preview] GUEST mode — using base64 image data (${mimeType})`);
+        // Validate and Process Base64
+        const rawBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+        
+        // Create Temp File
+        tempFilePath = path.join(os.tmpdir(), `preview-${Date.now()}-${uuidv4().slice(0, 6)}.jpg`);
+        fs.writeFileSync(tempFilePath, Buffer.from(rawBase64, 'base64'));
+        
+        originalImageUrl = tempFilePath;
+        logger.info(`[Preview] GUEST mode — wrote base64 to temp file: ${tempFilePath}`);
       } else if (urlFromBody) {
         originalImageUrl = urlFromBody;
         logger.info(`[Preview] GUEST mode — using direct image URL`);
@@ -329,6 +340,14 @@ export const generatePreviewImages = async (req: AuthRequest, res: Response, nex
       if (!project) throw new NotFoundError('Project not found');
       if (project.userId !== req.userId) throw new ForbiddenError('Access denied to this project');
       originalImageUrl = project.originalImageUrl;
+
+      if (originalImageUrl.startsWith('data:')) {
+        const rawBase64 = originalImageUrl.replace(/^data:image\/\w+;base64,/, '');
+        tempFilePath = path.join(os.tmpdir(), `preview-${Date.now()}-${uuidv4().slice(0, 6)}.jpg`);
+        fs.writeFileSync(tempFilePath, Buffer.from(rawBase64, 'base64'));
+        originalImageUrl = tempFilePath;
+        logger.info(`[Preview] AUTH mode — wrote DB base64 to temp file: ${tempFilePath}`);
+      }
 
       const creditState = await getCurrentCreditState(req.userId!);
       if (creditState.totalCredits < 1) {
@@ -363,10 +382,12 @@ export const generatePreviewImages = async (req: AuthRequest, res: Response, nex
         /timeout|timed out|503|busy|overloaded/i.test(errorMessage);
 
       const statusCode = isTimeoutOrUnavailable ? 503 : (genError.statusCode || 500);
-      const responseMessage = isTimeoutOrUnavailable
-        ? 'AI server is currently busy or generating took too long. Please try again.'
-        : errorMessage;
-      const errorCode = statusCode === 503 ? 'AI_UNAVAILABLE' : 'AI_FAILED';
+      const responseMessage = errorMessage;
+      const errorCode = /Gemini servers are currently overloaded/i.test(errorMessage)
+        ? 'GEMINI_OVERLOADED'
+        : statusCode === 503
+          ? 'AI_UNAVAILABLE'
+          : 'AI_FAILED';
       if (statusCode === 503) {
         logger.warn(`[ADMIN_ALERT] AI provider unavailable on preview for user ${req.userId || 'guest'}`);
       }
@@ -379,7 +400,7 @@ export const generatePreviewImages = async (req: AuthRequest, res: Response, nex
       return;
     }
 
-    if (results.length === 0) {
+    if (!results || results.length === 0) {
       if (!isGuest && projectId) {
         await prisma.project.update({ where: { id: projectId }, data: { status: 'FAILED' } }).catch(() => { });
       }
@@ -447,12 +468,23 @@ export const generatePreviewImages = async (req: AuthRequest, res: Response, nex
     });
   } catch (error) {
     next(error);
+  } finally {
+    // Cleanup any temporary file that was created during this request
+    if (tempFilePath && fs.existsSync(tempFilePath)) {
+      try {
+        fs.unlinkSync(tempFilePath);
+        logger.info(`[Preview] Cleaned up temporary file: ${tempFilePath}`);
+      } catch (cleanupError: any) {
+        logger.error(`[Preview] Failed to clean up temp file: ${cleanupError.message}`);
+      }
+    }
   }
 };
 
 
 // ─── Generate Final ───────────────────────
 export const generateFinalImage = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  let tempFilePath: string | undefined;
   try {
     const parsed = finalSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -486,14 +518,21 @@ export const generateFinalImage = async (req: AuthRequest, res: Response, next: 
 
     // ─── Resolve source image ──────────────────────────────────────────────────
     let originalImageUrl: string;
+
     if (isGuest) {
       // For guests: accept either Cloudinary URL or base64 image data
       const { originalImageUrl: urlFromBody, imageBase64, mimeType } = req.body;
       
       if (imageBase64) {
-        // Convert base64 to data URI for AI providers
-        originalImageUrl = base64ToDataUri(imageBase64, mimeType);
-        logger.info(`[Final] GUEST mode — using base64 image data (${mimeType}), style: ${styleName}, model: ${selectedModel?.displayName || 'default'}`);
+        // Validate and Process Base64
+        const rawBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+        
+        // Create Temp File
+        tempFilePath = path.join(os.tmpdir(), `final-${Date.now()}-${uuidv4().slice(0, 6)}.jpg`);
+        fs.writeFileSync(tempFilePath, Buffer.from(rawBase64, 'base64'));
+        
+        originalImageUrl = tempFilePath;
+        logger.info(`[Final] GUEST mode — wrote base64 to temp file: ${tempFilePath}, style: ${styleName}, model: ${selectedModel?.displayName || 'default'}`);
       } else if (urlFromBody) {
         originalImageUrl = urlFromBody;
         logger.info(`[Final] GUEST mode — style: ${styleName}, model: ${selectedModel?.displayName || 'default'}`);
@@ -531,6 +570,14 @@ export const generateFinalImage = async (req: AuthRequest, res: Response, next: 
       if (!project) throw new NotFoundError('Project not found');
       if (project.userId !== req.userId) throw new ForbiddenError('Access denied to this project');
       originalImageUrl = project.originalImageUrl;
+
+      if (originalImageUrl.startsWith('data:')) {
+        const rawBase64 = originalImageUrl.replace(/^data:image\/\w+;base64,/, '');
+        tempFilePath = path.join(os.tmpdir(), `final-${Date.now()}-${uuidv4().slice(0, 6)}.jpg`);
+        fs.writeFileSync(tempFilePath, Buffer.from(rawBase64, 'base64'));
+        originalImageUrl = tempFilePath;
+        logger.info(`[Final] AUTH mode — wrote DB base64 to temp file: ${tempFilePath}`);
+      }
 
       await prisma.project.update({ where: { id: projectId }, data: { status: 'GENERATING', style: styleName } });
     }
@@ -729,6 +776,16 @@ export const generateFinalImage = async (req: AuthRequest, res: Response, next: 
     });
   } catch (error) {
     next(error);
+  } finally {
+    // Cleanup any temporary file that was created during this request
+    if (tempFilePath && fs.existsSync(tempFilePath)) {
+      try {
+        fs.unlinkSync(tempFilePath);
+        logger.info(`[Final] Cleaned up temporary file: ${tempFilePath}`);
+      } catch (cleanupError: any) {
+        logger.error(`[Final] Failed to clean up temp file: ${cleanupError.message}`);
+      }
+    }
   }
 };
 
