@@ -72,7 +72,10 @@ export const toggleDesignPublish = async (
       throw new NotFoundError('Design not found');
     }
 
-    if (!req.userId || !design.userId || design.userId !== req.userId) {
+    const isGuestOwner = req.user?.role === 'guest' && !design.userId;
+    const isRealOwner = !!req.userId && !!design.userId && design.userId === req.userId;
+
+    if (!isGuestOwner && !isRealOwner) {
       throw new ForbiddenError('Access denied');
     }
 

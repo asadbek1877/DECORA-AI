@@ -1,14 +1,11 @@
 Backend:
-cd Home/backend
-npm run dev
+Set-Location 'D:\Decora AI\Home\backend'; npm run dev
 
 Web:
-cd Home/web
-npm run dev
+Set-Location 'D:\Decora AI\Home\web'; npm run dev
 
 Mobile:
-cd Home/frontend
-npm start
+Set-Location 'D:\Decora AI\Home\frontend'; npm start
 
 
 

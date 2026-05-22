@@ -11,6 +11,7 @@ import {
 } from '../types';
 import { api, SERVER_URL } from '../api/client';
 import { useAuthStore } from './authStore';
+import * as SecureStore from 'expo-secure-store';
 
 /** Convert relative /uploads/... paths to full http://... URLs. Skip data URIs. */
 function fullUrl(urlOrPath: string | undefined | null): string | undefined {
@@ -492,7 +493,9 @@ export const useDesignStore = create<DesignState>((set, get) => {
       });
 
       if (response.success && response.data) {
+        const designId = response.data.design?.id || response.data.projectId || projectId || null;
         set({
+          currentProjectId: designId,
           finalImageUrl: fullUrl(response.data.finalImageUrl) || null,
           originalImageUrl: fullUrl(response.data.originalImageUrl) || null,
           isMock: !!(response.data as any).isMock,
@@ -503,7 +506,9 @@ export const useDesignStore = create<DesignState>((set, get) => {
 
         // ──── NEW: Save to history after successful generation ────
         try {
-          await get().saveGenerationToHistory(projectId);
+          if (designId) {
+            await get().saveGenerationToHistory(designId);
+          }
         } catch (saveError: any) {
           console.warn('[DesignStore] Failed to save to history:', saveError.message);
           // Don't fail the generation, just warn
@@ -657,19 +662,20 @@ export const useDesignStore = create<DesignState>((set, get) => {
   toggleProjectLike: async (projectId: string) => {
     try {
       const response = await api.toggleLike(projectId);
-      if (response.success && response.data) {
+      const likeData = response.data;
+      if (response.success && likeData) {
         // Update history with new like status
         const updatedHistory = get().history.map((p: Project) =>
           p.id === projectId
             ? {
                 ...p,
-                isLiked: response.data.isLiked,
-                likeCount: response.data.likeCount,
+                isLiked: likeData.isLiked,
+                likeCount: likeData.likeCount,
               }
             : p
         );
         set({ history: updatedHistory, error: null });
-        return response.data.isLiked;
+        return likeData.isLiked;
       }
     } catch (error: any) {
       set({ error: error.message });
@@ -711,39 +717,35 @@ export const useDesignStore = create<DesignState>((set, get) => {
         });
 
         // Optional: Save to AsyncStorage for offline access
-        if (typeof AsyncStorage !== 'undefined') {
-          try {
-            await AsyncStorage.setItem(
-              'designHistory',
-              JSON.stringify({
-                data: processedHistory,
-                timestamp: new Date().toISOString(),
-              })
-            );
-          } catch (storageError: any) {
-            console.warn('[DesignStore] Failed to cache history:', storageError.message);
-          }
+        try {
+          await SecureStore.setItemAsync(
+            'designHistory',
+            JSON.stringify({
+              data: processedHistory,
+              timestamp: new Date().toISOString(),
+            })
+          );
+        } catch (storageError: any) {
+          console.warn('[DesignStore] Failed to cache history:', storageError.message);
         }
       } else {
         set({ history: [], historyLoaded: true });
       }
     } catch (error: any) {
       // Load from cache if available
-      if (typeof AsyncStorage !== 'undefined') {
-        try {
-          const cached = await AsyncStorage.getItem('designHistory');
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            set({
-              history: parsed.data || [],
-              historyLoaded: true,
-              error: `Offline mode: ${error.message}`,
-            });
-            return;
-          }
-        } catch (cacheError) {
-          // Ignore cache errors
+      try {
+        const cached = await SecureStore.getItemAsync('designHistory');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          set({
+            history: parsed.data || [],
+            historyLoaded: true,
+            error: `Offline mode: ${error.message}`,
+          });
+          return;
         }
+      } catch (cacheError) {
+        // Ignore cache errors
       }
 
       set({
@@ -779,18 +781,16 @@ export const useDesignStore = create<DesignState>((set, get) => {
         set({ history: updatedHistory });
 
         // Save to cache
-        if (typeof AsyncStorage !== 'undefined') {
-          try {
-            await AsyncStorage.setItem(
-              'designHistory',
-              JSON.stringify({
-                data: updatedHistory,
-                timestamp: new Date().toISOString(),
-              })
-            );
-          } catch (storageError: any) {
-            console.warn('[DesignStore] Failed to cache history:', storageError.message);
-          }
+        try {
+          await SecureStore.setItemAsync(
+            'designHistory',
+            JSON.stringify({
+              data: updatedHistory,
+              timestamp: new Date().toISOString(),
+            })
+          );
+        } catch (storageError: any) {
+          console.warn('[DesignStore] Failed to cache history:', storageError.message);
         }
       }
     } catch (error: any) {

@@ -451,6 +451,12 @@ class ApiClient {
     return this.request<ProjectDetail>(`/design/project/${projectId}`);
   }
 
+  async toggleDesignPublish(projectId: string): Promise<ApiResponse<{ id: string; isPublic: boolean; updatedAt: string }>> {
+    return this.request<{ id: string; isPublic: boolean; updatedAt: string }>(`/design/${projectId}/publish`, {
+      method: 'PATCH',
+    });
+  }
+
   // Delete
   async deleteProject(projectId: string): Promise<ApiResponse<void>> {
     return this.request<void>(`/design/image/${projectId}`, {

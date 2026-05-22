@@ -5,6 +5,16 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
+import Animated, {
+  Easing,
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { AppHeader } from '../src/components/new-ui/AppHeader';
 import { BottomNav } from '../src/components/new-ui/BottomNav';
 import { BeforeAfterSlider } from '../src/components/new-ui/BeforeAfterSlider'; 
@@ -32,9 +42,13 @@ export default function ResultScreen() {
   const [imageViewerType, setImageViewerType] = React.useState<'before' | 'after' | null>(null);
   const [projectDetail, setProjectDetail] = React.useState<any>(null);
   const [isLoadingProject, setIsLoadingProject] = React.useState(!!designId);
+  const [isPublishing, setIsPublishing] = React.useState(false);
+  const [publishState, setPublishState] = React.useState<'idle' | 'published'>('idle');
   const { user } = useAuthStore();
   
-  const { originalImageUri, finalImageUrl, previews } = useDesignStore();
+  const { originalImageUri, finalImageUrl, previews, currentProjectId } = useDesignStore();
+  const publishScale = useSharedValue(1);
+  const publishGlow = useSharedValue(0);
 
   // Load project details if designId is provided
   React.useEffect(() => {
@@ -212,6 +226,82 @@ export default function ResultScreen() {
     }
   };
 
+  React.useEffect(() => {
+    const isPublished = !!projectDetail?.isPublic;
+    setPublishState(isPublished ? 'published' : 'idle');
+    publishGlow.value = withTiming(isPublished ? 1 : 0, { duration: 260, easing: Easing.out(Easing.cubic) });
+  }, [projectDetail?.isPublic, publishGlow]);
+
+  const publishButtonStyle = useAnimatedStyle(() => {
+    const publishedBg = interpolateColor(
+      publishGlow.value,
+      [0, 1],
+      [colors.surface, isDark ? 'rgba(74, 222, 128, 0.14)' : 'rgba(16, 185, 129, 0.12)']
+    );
+    const publishedBorder = interpolateColor(
+      publishGlow.value,
+      [0, 1],
+      [colors.border, isDark ? 'rgba(74, 222, 128, 0.35)' : 'rgba(16, 185, 129, 0.34)']
+    );
+
+    return {
+      transform: [{ scale: publishScale.value }],
+      backgroundColor: publishedBg,
+      borderColor: publishedBorder,
+      shadowOpacity: publishGlow.value * 0.16,
+    };
+  });
+
+  const publishLabelStyle = useAnimatedStyle(() => ({
+    opacity: 1,
+    transform: [{ translateY: publishGlow.value * -0.5 }],
+  }));
+
+  const handlePublishToGallery = async () => {
+    const projectId = projectDetail?.id || designId || currentProjectId;
+    if (!projectId) {
+      Alert.alert('Unavailable', 'This design does not have an ID to publish yet.');
+      return;
+    }
+
+    if (publishState === 'published' || isPublishing) {
+      return;
+    }
+
+    try {
+      setIsPublishing(true);
+      publishScale.value = withSequence(
+        withSpring(0.98, { damping: 16, stiffness: 320 }),
+        withSpring(1.03, { damping: 12, stiffness: 240 }),
+        withSpring(1, { damping: 14, stiffness: 260 })
+      );
+
+      const response = await (api as any).toggleDesignPublish(projectId);
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Failed to publish design');
+      }
+
+      setProjectDetail((current: any) => ({
+        ...current,
+        isPublic: response.data.isPublic,
+      }));
+      setPublishState('published');
+      publishGlow.value = withTiming(1, { duration: 260, easing: Easing.out(Easing.cubic) });
+      publishScale.value = withSequence(
+        withSpring(1.08, { damping: 12, stiffness: 220 }),
+        withSpring(1, { damping: 14, stiffness: 260 })
+      );
+
+      Alert.alert('Published', 'Your design is now visible in the community gallery.');
+    } catch (error: any) {
+      console.error('[Publish] Error:', error);
+      Alert.alert('Publish failed', error.message || 'Could not publish this design.');
+      publishScale.value = withSpring(1, { damping: 16, stiffness: 260 });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   const handleCopyImage = async () => {
     try {
       if (!displayFinalUrl) {
@@ -380,6 +470,26 @@ export default function ResultScreen() {
                     <Text style={[styles.softText, { color: colors.text }]}>{t.share}</Text>
                   </AnimatedPressable>
                 </View>
+
+                <Animated.View style={[styles.publishWrap, publishButtonStyle]}>
+                  <Pressable onPress={handlePublishToGallery} disabled={isPublishing || publishState === 'published'} style={styles.publishPressable}>
+                    <View style={styles.publishRow}>
+                      {isPublishing ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : publishState === 'published' ? (
+                        <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                      ) : (
+                        <Ionicons name="sparkles" size={18} color={colors.primary} />
+                      )}
+                      <Animated.Text style={[styles.publishText, { color: publishState === 'published' ? '#10B981' : colors.text }, publishLabelStyle]}>
+                        {publishState === 'published' ? 'Published ✓' : 'Publish to Community Gallery'}
+                      </Animated.Text>
+                    </View>
+                    <Text style={[styles.publishSubtext, { color: colors.muted }]}>
+                      {publishState === 'published' ? 'Shared with the community' : 'Showcase this design in the gallery'}
+                    </Text>
+                  </Pressable>
+                </Animated.View>
                 
                 <View style={styles.twoBtns}>
                   <AnimatedPressable
@@ -475,6 +585,34 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   copyText: { fontWeight: '600', fontSize: 14 },
+  publishWrap: {
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 24,
+    elevation: 1,
+  },
+  publishPressable: {
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+  },
+  publishRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  publishText: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  publishSubtext: {
+    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 16,
+  },
   cta: {
     marginTop: 8,
     borderRadius: 24,

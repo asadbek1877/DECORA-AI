@@ -90,10 +90,20 @@ export interface GeneratedPrompt {
 
 export interface FinalResult {
   projectId: string;
+  design?: {
+    id: string;
+    imageUrl?: string;
+  };
   styleName: string;
   finalImageUrl: string;
   originalImageUrl: string;
   status: string;
+}
+
+export interface PublishResult {
+  id: string;
+  isPublic: boolean;
+  updatedAt: string;
 }
 
 export interface ShareResult {

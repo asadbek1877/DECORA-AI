@@ -728,6 +728,10 @@ export const generateFinalImage = async (req: AuthRequest, res: Response, next: 
         success: true,
         data: {
           projectId: guestProject.id,
+          design: {
+            id: guestProject.id,
+            imageUrl: guestImage.imageUrl,
+          },
           styleName: guestProject.styleName || styleName,
           finalImageUrl: guestImage.imageUrl,
           originalImageUrl,
@@ -794,6 +798,10 @@ export const generateFinalImage = async (req: AuthRequest, res: Response, next: 
       success: true,
       data: {
         projectId,
+        design: {
+          id: projectId!,
+          imageUrl: savedImage.imageUrl,
+        },
         styleName,
         finalImageUrl: savedImage.imageUrl,
         originalImageUrl,
