@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as galleryController from '../controllers/gallery.controller';
+import * as publicDesignController from '../controllers/public-design.controller';
 import { upload } from '../middleware/upload';
 import { requireAdminSecret } from '../controllers/admin.controller';
 
@@ -17,9 +18,9 @@ router.get('/styles', galleryController.getSupportedStyles);
 
 /**
  * GET /api/gallery
- * List all gallery items with before images
+ * List all public designs for the gallery feed
  */
-router.get('/', galleryController.listGalleryItems);
+router.get('/', publicDesignController.getPublicGallery);
 
 /**
  * GET /api/gallery/:id

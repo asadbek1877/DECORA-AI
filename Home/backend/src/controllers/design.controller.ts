@@ -579,7 +579,7 @@ export const generateFinalImage = async (req: AuthRequest, res: Response, next: 
         logger.info(`[Final] AUTH mode — wrote DB base64 to temp file: ${tempFilePath}`);
       }
 
-      await prisma.project.update({ where: { id: projectId }, data: { status: 'GENERATING', style: styleName } });
+      await prisma.project.update({ where: { id: projectId }, data: { status: 'GENERATING', style: styleName, styleName } });
     }
 
     const isFree = isFreeProvider(modelName);
@@ -754,7 +754,15 @@ export const generateFinalImage = async (req: AuthRequest, res: Response, next: 
     const creditState = await getUserCreditState(req.userId!);
     
     logger.info(`[Final] Completed — project ${projectId} model: ${selectedModel?.displayName || 'default'}`);
-    await prisma.project.update({ where: { id: projectId }, data: { status: 'COMPLETED' } });
+    await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        status: 'COMPLETED',
+        style: styleName,
+        styleName: result.styleName || styleName,
+        prompt: result.prompt || customPrompt || null,
+      },
+    });
 
     res.status(200).json({
       success: true,

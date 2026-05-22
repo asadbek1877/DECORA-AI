@@ -21,6 +21,7 @@ import {
   getUserSummary,
   generateAdvancedPrompt,
 } from '../controllers/design.controller';
+import * as publicDesignController from '../controllers/public-design.controller';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import { upload } from '../middleware/upload';
 import { generateLimiter } from '../middleware/rateLimiter';
@@ -53,5 +54,6 @@ router.post('/project/:id/like', authenticate, toggleLike);
 router.get('/likes', authenticate, getLikedProjects);
 router.get('/prompts', authenticate, getPromptHistory);
 router.get('/summary', authenticate, getUserSummary);
+router.patch('/:id/publish', authenticate, publicDesignController.toggleDesignPublish);
 
 export default router;

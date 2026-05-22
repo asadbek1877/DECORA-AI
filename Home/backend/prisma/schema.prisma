@@ -35,10 +35,12 @@ model User {
 // ─── Project (Дизайн лойиҳа) ─────────────
 model Project {
   id                String   @id @default(uuid())
-  userId            String   @map("user_id")
+  userId            String?  @map("user_id")
   originalImageUrl  String   @map("original_image_url")  // Cloudinary URL
   originalPublicId  String?  @map("original_public_id")  // Cloudinary public_id
   style             String?  // Танланган стил номи
+  styleName         String?  @map("style_name")
+  prompt            String?
   roomType          String?  @map("room_type") // "bedroom", "living_room", etc.
   status            String   @default("UPLOADED") // UPLOADED | PREVIEWING | GENERATING | COMPLETED | FAILED
   isPublic          Boolean  @default(false) @map("is_public") // Community feed учун
@@ -49,7 +51,7 @@ model Project {
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   // Relations
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
   generatedImages GeneratedImage[]
   promptHistory   PromptHistory[]
   likes           Like[]
