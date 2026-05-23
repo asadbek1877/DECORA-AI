@@ -1,5 +1,5 @@
-import { useThemeStore } from '../../store/themeStore';
-import { useLanguageStore } from '../../store/languageStore';
+import { useThemeStore } from '../../store/themeStore.js';
+import { useLanguageStore } from '../../store/languageStore.js';
 
 // Static fallback for StyleSheet.create (used in initial render)
 export const ui = {
