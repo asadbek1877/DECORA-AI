@@ -1,7 +1,6 @@
 {
 "name": "ai-interior-backend",
   "version": "1.0.0",
-  "type": "module",
   "description": "AI Interior Design Backend - Express + Gemini",
   "main": "dist/server.js",
   "scripts": {
