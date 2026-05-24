@@ -1,18 +1,9 @@
-// Load Prisma client dynamically to support different @prisma/client shapes
-// (some installs export default, others expose PrismaClient named export).
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const _prismaPkg = (() => {
-  try {
-    return require('@prisma/client');
-  } catch (e) {
-    return undefined;
-  }
-})();
-
-const PrismaClient: any = _prismaPkg?.PrismaClient ?? _prismaPkg?.default ?? _prismaPkg;
-
+import * as PrismaPkg from '@prisma/client';
 import { PrismaD1 } from '@prisma/adapter-d1';
 import logger from '../utils/logger.js';
+
+// Support different export shapes from @prisma/client (named or default)
+const PrismaClient: any = (PrismaPkg as any).PrismaClient ?? (PrismaPkg as any).default ?? PrismaPkg;
 
 // Cloudflare D1 adapter configuration
 const getAdapter = () => {
@@ -22,9 +13,12 @@ const getAdapter = () => {
     return new PrismaD1(globalCtx.db);
   }
   
-  // Development: use local SQLite via LibSQL (Daf'atan import qilish CommonJS uchun)
-  const pkg = require('@prisma/adapter-libsql');
-  const PrismaLibSql = pkg.PrismaLibSql;
+  // Development: use local SQLite via LibSQL (require dynamically for CommonJS)
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const pkg = (() => {
+    try { return require('@prisma/adapter-libsql'); } catch (e) { return undefined; }
+  })();
+  const PrismaLibSql = pkg?.PrismaLibSql;
   const dbUrl = process.env.DATABASE_URL || 'file:./dev.db';
   return new PrismaLibSql({ url: dbUrl });
 };
