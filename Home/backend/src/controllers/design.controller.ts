@@ -1067,7 +1067,7 @@ export const getSharedProject = async (req: AuthRequest, res: Response, next: Ne
       data: {
         id: project.id,
         originalImageUrl: project.originalImageUrl,
-        finalImageUrl: project.generatedImages.find((img) => img.imageType === 'FINAL')?.imageUrl || null,
+        finalImageUrl: project.generatedImages.find((img: any) => img.imageType === 'FINAL')?.imageUrl || null,
         style: project.style,
         author: project.user?.username || 'Unknown',
         createdAt: project.createdAt,
@@ -1334,22 +1334,22 @@ export const getUserSummary = async (req: AuthRequest, res: Response, next: Next
     });
 
     const styles = projects
-      .filter(p => p.style)
-      .reduce((acc: Record<string, number>, p) => {
+      .filter((p: any) => p.style)
+      .reduce((acc: Record<string, number>, p: any) => {
         acc[p.style!] = (acc[p.style!] || 0) + 1;
         return acc;
       }, {});
 
     const roomTypes = projects
-      .filter(p => p.roomType)
-      .reduce((acc: Record<string, number>, p) => {
+      .filter((p: any) => p.roomType)
+      .reduce((acc: Record<string, number>, p: any) => {
         acc[p.roomType!] = (acc[p.roomType!] || 0) + 1;
         return acc;
       }, {});
 
     const totalProjects = projects.length;
-    const totalLikes = projects.reduce((sum, p) => sum + p._count.likes, 0);
-    const completedProjects = projects.filter(p => p.status === 'COMPLETED').length;
+    const totalLikes = projects.reduce((sum: any, p: any) => sum + p._count.likes, 0);
+    const completedProjects = projects.filter((p: any) => p.status === 'COMPLETED').length;
 
     // Get most used styles and rooms
     const topStyles = Object.entries(styles)

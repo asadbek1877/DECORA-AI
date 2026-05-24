@@ -35,7 +35,7 @@ export const getPublicGallery = async (
 
     res.status(200).json({
       success: true,
-      data: designs.map((design) => ({
+      data: designs.map((design: any) => ({
         id: design.id,
         originalImageUrl: design.originalImageUrl,
         finalImageUrl: design.generatedImages[0]?.imageUrl || null,
