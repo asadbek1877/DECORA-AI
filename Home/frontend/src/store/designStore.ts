@@ -8,9 +8,9 @@ import {
   RemovalOptions,
   StyleParameters,
   ColorAnalysis,
-} from '../types.js';
-import { api, SERVER_URL } from '../api/client.js';
-import { useAuthStore } from './authStore.js';
+} from '../types';
+import { api, SERVER_URL } from '../api/client';
+import { useAuthStore } from './authStore';
 import * as SecureStore from 'expo-secure-store';
 
 /** Convert relative /uploads/... paths to full http://... URLs. Skip data URIs. */

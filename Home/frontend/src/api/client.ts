@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
-import { compressImageToBase64 } from '../utils/imageCompression.js';
+import { compressImageToBase64 } from '../utils/imageCompression';
 import {
   ApiResponse,
   AuthResult,
@@ -15,17 +15,17 @@ import {
   CommunityProject,
   AIModel,
   GeneratedPrompt,
-} from '../types.js';
+} from '../types';
 
 // Lazy import to break circular dependency: client.ts <-> authStore.ts
 function getAuthStore() {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  return require('../store/authStore.js').useAuthStore;
+  return require('../store/authStore').useAuthStore;
 }
 
 function getAdminStore() {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  return require('../store/adminStore.js').useAdminStore;
+  return require('../store/adminStore').useAdminStore;
 }
 
 // Auto-detect backend URL based on environment

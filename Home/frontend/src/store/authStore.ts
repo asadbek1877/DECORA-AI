@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
-import { User } from '../types.js';
-import { api } from '../api/client.js';
-import { useDesignStore } from './designStore.js';
+import { User } from '../types';
+import { api } from '../api/client';
+import { useDesignStore } from './designStore';
 
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';

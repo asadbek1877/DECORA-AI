@@ -71,7 +71,7 @@ export const colors = {
   gradientDark: ['#F8FFFE', '#E8F7F7'] as const,
 };
 
-export { spacing } from './spacing.js';
+export { spacing } from './spacing';
 
 export const borderRadius = {
   sm: 8,
@@ -83,7 +83,7 @@ export const borderRadius = {
   full: 9999,
 };
 
-export { typography } from './typography.js';
+export { typography } from './typography';
 
 export const shadows = {
   soft: {

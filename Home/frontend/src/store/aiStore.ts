@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { SERVER_URL } from '../api/client.js';
+import { SERVER_URL } from '../api/client';
 
 const AI_BASE = `${SERVER_URL}/api/ai`;
 
