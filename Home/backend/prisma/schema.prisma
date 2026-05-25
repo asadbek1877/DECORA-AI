@@ -1,5 +1,5 @@
 // =============================================
-//  AI Interior Designer — Prisma Schema (SQLite)
+//  AI Interior Designer — Prisma Schema (PostgreSQL)
 // =============================================
 
 generator client {
@@ -8,6 +8,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ─── User ─────────────────────────────────

@@ -1,14 +1,21 @@
 import { PrismaClient } from '@prisma/client';
 import logger from '../utils/logger.js';
 
-// Global Prisma instance — бир марта яратилади, қайта ишлатилади
+const prismaClientSingleton = () => {
+  return new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  });
+};
+
+type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>;
+
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+  prisma: PrismaClientSingleton | undefined;
 };
 
 export const prisma =
   globalForPrisma.prisma ??
-  new PrismaClient();
+  prismaClientSingleton();
 
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
@@ -36,3 +43,4 @@ export async function disconnectDatabase(): Promise<void> {
 }
 
 export default prisma;
+

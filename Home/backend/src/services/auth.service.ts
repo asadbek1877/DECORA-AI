@@ -112,3 +112,4 @@ function generateToken(userId: string): string {
     expiresIn: config.jwt.expiresIn,
   } as jwt.SignOptions);
 }
+
