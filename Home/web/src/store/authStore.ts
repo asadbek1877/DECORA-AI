@@ -33,6 +33,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const res = await api.login({ email, password });
+      if (!res.data) {
+        throw new Error('Login failed. Please try again.');
+      }
       const { user, token } = res.data;
       localStorage.setItem('token', token);
       set({ user, token, isAuthenticated: true, isLoading: false });
@@ -46,6 +49,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const res = await api.register({ email, username, password });
+      if (!res.data) {
+        throw new Error('Registration failed. Please try again.');
+      }
       const { user, token } = res.data;
       localStorage.setItem('token', token);
       set({ user, token, isAuthenticated: true, isLoading: false });

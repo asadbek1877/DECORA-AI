@@ -61,5 +61,4 @@ export default defineConfig({
   },
   
   // ─── Optimization hints ───
-  ssr: false,
 });

@@ -1,6 +1,8 @@
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useDesignStore } from '../store/designStore';
+import { useDesignWorkflow } from '../hooks/useDesignWorkflow';
+import { downloadImage } from '../utils/downloadImage';
 
 export default function ResultGrid() {
   const navigate = useNavigate();
@@ -8,53 +10,19 @@ export default function ResultGrid() {
     generatedImages,
     isGenerating,
     selectedStyle,
-    regenerate,
     reset,
     error,
     clearError,
   } = useDesignStore();
+  const { regenerate } = useDesignWorkflow();
 
   const handleDownload = async (url: string, index: number) => {
     try {
-      // Validate URL
       if (!url || !url.startsWith('http')) {
         alert('Invalid image URL. Please try again.');
         return;
       }
-
-      // Fetch the image with timeout protection
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
-
-      // Check for successful response
-      if (!response.ok) {
-        throw new Error(`HTTP Error ${response.status}: ${response.statusText}`);
-      }
-
-      // Get the blob with proper error handling
-      const blob = await response.blob();
-
-      // Validate blob size
-      if (blob.size === 0) {
-        throw new Error('Image file is empty');
-      }
-
-      // Create and trigger download
-      const downloadUrl = URL.createObjectURL(blob);
-      const downloadLink = document.createElement('a');
-      downloadLink.href = downloadUrl;
-      downloadLink.download = `decora-ai-${selectedStyle}-${index + 1}.png`;
-      
-      // Append to body, click, and remove (required for some browsers)
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
-      
-      // Clean up the blob URL after a short delay
-      setTimeout(() => URL.revokeObjectURL(downloadUrl), 100);
+      await downloadImage(url, `${selectedStyle}-${index + 1}`);
     } catch (error: any) {
       console.error('Download error:', error);
       

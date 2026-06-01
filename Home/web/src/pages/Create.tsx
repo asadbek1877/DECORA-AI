@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useDesignStore } from '../store/designStore';
+import { useDesignWorkflow } from '../hooks/useDesignWorkflow';
+import { useGenerationLimit } from '../hooks/useGenerationLimit';
 
 const STYLES = [
   { name: 'modern', label: 'Modern' },
@@ -28,12 +30,12 @@ export default function Create() {
     isUploading,
     isGenerating,
     error,
-    setUploadedFile,
     setSelectedStyle,
     setCustomPrompt,
-    uploadAndGenerate,
     clearError,
   } = useDesignStore();
+  const { setFileWithPreview, uploadAndGenerate } = useDesignWorkflow();
+  const { canGenerate, trackGeneration, rollbackGeneration } = useGenerationLimit();
 
   const [isDragOver, setIsDragOver] = useState(false);
   const [promptLen, setPromptLen] = useState(0);
@@ -42,8 +44,8 @@ export default function Create() {
 
   const handleFile = useCallback((file: File) => {
     if (!file.type.match(/^image\/(jpeg|png|jpg|webp)$/)) return;
-    setUploadedFile(file);
-  }, [setUploadedFile]);
+    setFileWithPreview(file);
+  }, [setFileWithPreview]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -53,23 +55,18 @@ export default function Create() {
   }, [handleFile]);
 
   const handleGenerate = async () => {
-    const genCountStr = localStorage.getItem('generations_count');
-    const genCount = genCountStr ? parseInt(genCountStr, 10) : 0;
-    
-    if (genCount >= 1) {
+    if (!canGenerate()) {
       setShowPremiumModal(true);
       return;
     }
 
     clearError();
     try {
-      localStorage.setItem('generations_count', (genCount + 1).toString());
+      trackGeneration();
       await uploadAndGenerate();
       navigate('/result');
     } catch (err) {
-      // Revert generation count on failure
-      const failCount = parseInt(localStorage.getItem('generations_count') || '1', 10);
-      localStorage.setItem('generations_count', Math.max(0, failCount - 1).toString());
+      rollbackGeneration();
     }
   };
 
@@ -105,7 +102,7 @@ export default function Create() {
               <img src={uploadedPreview} alt="Uploaded room" className="w-full aspect-video object-cover rounded-3xl" />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
                 <button
-                  onClick={() => setUploadedFile(null)}
+                  onClick={() => setFileWithPreview(null)}
                   className="opacity-0 group-hover:opacity-100 transition-opacity px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-error/70 backdrop-blur"
                 >
                   ✕ Remove

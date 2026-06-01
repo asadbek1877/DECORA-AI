@@ -1,6 +1,7 @@
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useDesignStore } from '../store/designStore';
+import { useDesignWorkflow } from '../hooks/useDesignWorkflow';
 
 export default function GenerateButton() {
   const navigate = useNavigate();
@@ -10,8 +11,8 @@ export default function GenerateButton() {
     isGenerating,
     error,
     clearError,
-    uploadAndGenerate,
   } = useDesignStore();
+  const { uploadAndGenerate } = useDesignWorkflow();
 
   const isLoading = isUploading || isGenerating;
   const isDisabled = !uploadedFile || isLoading;
